@@ -2,13 +2,64 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // 初期管理者（ブートストラップ用）
+    // TODO: "your_firebase_uid" を自分の Firebase Authentication UID に置き換えてください
+    // 複数人にしたい場合は配列へUIDを追加してください
+    function isBootstrapAdmin() {
+      return isSignedIn()
+        && request.auth.uid in ['your_firebase_uid'];
+    }
+
+    function isManagedAdmin(leagueId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/leagues/$(leagueId)/admins/$(request.auth.uid));
+    }
+
+    function isLeagueAdmin(leagueId) {
+      return isBootstrapAdmin() || isManagedAdmin(leagueId);
+    }
+
+    function isValidAdminCreate(adminUid) {
+      return request.resource.data.keys().hasOnly(['uid', 'note', 'addedBy', 'createdAt'])
+        && request.resource.data.uid == adminUid
+        && request.resource.data.addedBy == request.auth.uid
+        && request.resource.data.note is string
+        && request.resource.data.note.size() <= 80
+        && request.resource.data.createdAt is timestamp;
+    }
+
+    match /leagues/{leagueId}/admins/{adminUid} {
+      allow get: if isSignedIn()
+        && (isBootstrapAdmin() || request.auth.uid == adminUid);
+      allow list: if isBootstrapAdmin();
+      allow create: if isBootstrapAdmin()
+        && adminUid != request.auth.uid
+        && !exists(/databases/$(database)/documents/leagues/$(leagueId)/admins/$(adminUid))
+        && isValidAdminCreate(adminUid);
+      allow update: if false;
+      allow delete: if isBootstrapAdmin()
+        && adminUid != request.auth.uid;
+    }
 
     // leagues/main 配下の読み取りは全員OK（ログイン不要）
-    // 書き込みはログイン済みユーザーのみ（v0.1 では全ログイン済みを管理者扱い）
-
-    match /leagues/{leagueId}/{collection}/{docId} {
+    // players / games / results の書き込みは管理者のみ
+    match /leagues/{leagueId}/players/{docId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isLeagueAdmin(leagueId);
+    }
+
+    match /leagues/{leagueId}/games/{docId} {
+      allow read: if true;
+      allow write: if isLeagueAdmin(leagueId);
+    }
+
+    match /leagues/{leagueId}/results/{docId} {
+      allow read: if true;
+      allow write: if isLeagueAdmin(leagueId);
     }
   }
 }

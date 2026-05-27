@@ -10,6 +10,14 @@ export interface Player {
   updatedAt: Timestamp
 }
 
+export interface AdminUser {
+  id: string
+  uid: string
+  note: string
+  addedBy: string
+  createdAt: Timestamp
+}
+
 export interface Game {
   id: string
   gameNo: number

@@ -21,6 +21,7 @@ export const LEAGUE_ID = 'main'
 export const SEASON_ID = 'season1'
 
 export const paths = {
+  admins: `leagues/${LEAGUE_ID}/admins`,
   players: `leagues/${LEAGUE_ID}/players`,
   games: `leagues/${LEAGUE_ID}/games`,
   results: `leagues/${LEAGUE_ID}/results`,

@@ -3,10 +3,12 @@ import {
   collection,
   onSnapshot,
   addDoc,
+  doc,
   serverTimestamp,
   query,
   orderBy,
   getDocs,
+  writeBatch,
 } from 'firebase/firestore'
 import { db, paths } from '../firebase'
 import type { Game } from '../types'
@@ -57,5 +59,44 @@ export function useGames() {
     return { id: docRef.id, gameNo }
   }
 
-  return { games, loading, error, addGame }
+  const addGameWithResults = async (params: {
+    date: string
+    appName: string
+    memo: string
+    entries: { playerId: string; rank: number; point: number }[]
+  }): Promise<{ id: string; gameNo: number }> => {
+    const gamesRef = collection(db, paths.games)
+    const resultsRef = collection(db, paths.results)
+
+    // 既存件数 + 1 で gameNo を決定
+    const snapshot = await getDocs(gamesRef)
+    const gameNo = snapshot.size + 1
+
+    const gameRef = doc(gamesRef)
+    const batch = writeBatch(db)
+
+    batch.set(gameRef, {
+      gameNo,
+      date: params.date,
+      appName: params.appName.trim(),
+      memo: params.memo.trim(),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
+
+    for (const entry of params.entries) {
+      const resultRef = doc(resultsRef)
+      batch.set(resultRef, {
+        gameId: gameRef.id,
+        ...entry,
+        createdAt: serverTimestamp(),
+      })
+    }
+
+    await batch.commit()
+
+    return { id: gameRef.id, gameNo }
+  }
+
+  return { games, loading, error, addGame, addGameWithResults }
 }

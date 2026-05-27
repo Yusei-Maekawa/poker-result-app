@@ -4,16 +4,15 @@ import { Layout, PageHeader } from '../components/Layout'
 import { Loading } from '../components/Loading'
 import { usePlayers, useActivePlayers } from '../hooks/usePlayers'
 import { useGames } from '../hooks/useGames'
-import { useResults } from '../hooks/useResults'
 import { useAuth } from '../hooks/useAuth'
 import { calculatePoint } from '../utils/point'
+import { getFirebaseErrorMessage } from '../utils/firebaseError'
 
 export function NewGamePage() {
   const navigate = useNavigate()
   const { isAdmin, loading: authLoading } = useAuth()
   const { players, loading: playersLoading } = usePlayers()
-  const { addGame } = useGames()
-  const { addResults } = useResults()
+  const { addGameWithResults } = useGames()
 
   const activePlayers = useActivePlayers(players)
 
@@ -83,21 +82,29 @@ export function NewGamePage() {
     setSubmitting(true)
 
     try {
-      const { id: gameId } = await addGame({ date, appName, memo })
-
       const n = selectedPlayerIds.length
       const entries = selectedPlayerIds.map((playerId) => {
         const rank = rankMap[playerId]
         const point = calculatePoint(rank, n)
-        return { gameId, playerId, rank, point }
+        return { playerId, rank, point }
       })
 
-      await addResults(entries)
+      const { id: gameId } = await addGameWithResults({
+        date,
+        appName,
+        memo,
+        entries,
+      })
 
       navigate(`/games/${gameId}`)
     } catch (e) {
       console.error(e)
-      setError('保存に失敗しました。再試行してください。')
+      setError(
+        getFirebaseErrorMessage(
+          e,
+          '保存に失敗しました。再試行してください。',
+        ),
+      )
       setSubmitting(false)
     }
   }
