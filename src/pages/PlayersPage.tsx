@@ -169,19 +169,7 @@ export function PlayersPage() {
         </div>
       )}
 
-      {user && !canManageAdmins && (
-        <div className="card px-4 py-4 mb-6">
-          <h2 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-4">
-            ログイン情報
-          </h2>
-          <p className="text-white/40 text-xs mb-1">管理者追加に使うあなたの UID</p>
-          <p className="text-white/80 text-sm font-mono break-all">{user.uid}</p>
-          <p className="text-white/30 text-xs mt-2">
-            管理者にこの UID を共有すると、GUI から管理者追加できます。
-          </p>
-        </div>
-      )}
-
+      
       {canManageAdmins && (
         <div className="card px-4 py-4 mb-6">
           <h2 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-4">

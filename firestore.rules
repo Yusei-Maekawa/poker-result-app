@@ -11,7 +11,7 @@ service cloud.firestore {
     // 複数人にしたい場合は配列へUIDを追加してください
     function isBootstrapAdmin() {
       return isSignedIn()
-        && request.auth.uid in ['your_firebase_uid'];
+        && request.auth.uid in ['u46u17rpgRWZeDY6jhya888qDZU2'];
     }
 
     function isManagedAdmin(leagueId) {
