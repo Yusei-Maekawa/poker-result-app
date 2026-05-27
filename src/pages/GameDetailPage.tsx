@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { Layout } from '../components/Layout'
 import { Loading } from '../components/Loading'
 import { usePlayers } from '../hooks/usePlayers'
 import { useGames } from '../hooks/useGames'
 import { useGameResults } from '../hooks/useResults'
+import { useAuth } from '../hooks/useAuth'
 import { buildDiscordMessage } from '../utils/discord'
 import { getFirebaseErrorMessage } from '../utils/firebaseError'
 import type { ResultWithPlayer } from '../types'
@@ -13,8 +14,10 @@ const RANK_EMOJI: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
 
 export function GameDetailPage() {
   const { gameId } = useParams<{ gameId: string }>()
+  const navigate = useNavigate()
+  const { isAdmin } = useAuth()
   const { players, loading: playersLoading } = usePlayers()
-  const { games, loading: gamesLoading } = useGames()
+  const { games, loading: gamesLoading, deleteGame } = useGames()
   const {
     results,
     loading: resultsLoading,
@@ -22,6 +25,8 @@ export function GameDetailPage() {
   } = useGameResults(gameId ?? '')
   const [copied, setCopied] = useState(false)
   const [copyError, setCopyError] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   const loading = playersLoading || gamesLoading || resultsLoading
 
@@ -31,11 +36,33 @@ export function GameDetailPage() {
   const resultsWithPlayer: ResultWithPlayer[] = results
     .map((r) => {
       const player = playerMap.get(r.playerId)
-      if (!player) return null
+      if (!player || !player.isActive) return null
       return { ...r, player }
     })
     .filter((r): r is ResultWithPlayer => r !== null)
     .sort((a, b) => a.rank - b.rank)
+
+  const handleDelete = async () => {
+    if (!gameId || !game) return
+    const confirmed = window.confirm(
+      `第${game.gameNo}戦を削除しますか？\nこの操作は取り消せません。`,
+    )
+    if (!confirmed) return
+
+    setDeleteError('')
+    setDeleting(true)
+
+    try {
+      await deleteGame(gameId)
+      navigate('/games')
+    } catch (error) {
+      console.error(error)
+      setDeleteError(
+        getFirebaseErrorMessage(error, '削除に失敗しました。再試行してください。'),
+      )
+      setDeleting(false)
+    }
+  }
 
   const handleCopy = async () => {
     if (!game) return
@@ -117,6 +144,31 @@ export function GameDetailPage() {
           </p>
         )}
       </div>
+
+      {isAdmin && (
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+          <Link
+            to={`/games/${gameId}/edit`}
+            className="btn-secondary flex-1 text-center text-sm py-2.5"
+          >
+            編集
+          </Link>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="flex-1 text-sm py-2.5 rounded-lg font-medium border border-red-500/40
+                       bg-red-500/10 text-red-300 hover:bg-red-500/20 transition-colors
+                       disabled:opacity-50"
+          >
+            {deleting ? '削除中...' : '削除'}
+          </button>
+        </div>
+      )}
+
+      {deleteError && (
+        <p className="text-red-300 text-sm mb-4">{deleteError}</p>
+      )}
 
       {/* 結果一覧 */}
       <div className="card px-4 py-4 mb-4">

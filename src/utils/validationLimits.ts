@@ -1,0 +1,13 @@
+/** クライアント・Firestore Rules と揃える文字数上限（単一の参照元） */
+
+export const GAME_LIMITS = {
+  appName: 40,
+  memo: 100,
+  maxParticipants: 20,
+} as const
+
+export const PLAYER_LIMITS = {
+  name: 20,
+  icon: 4,
+  memo: 80,
+} as const

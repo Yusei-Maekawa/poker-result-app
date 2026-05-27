@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Header } from './Header'
+import { BannedParticipationBanner } from './BannedParticipationBanner'
 
 interface LayoutProps {
   children: ReactNode
@@ -8,8 +9,9 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-dvh bg-felt-texture">
+      <BannedParticipationBanner />
       <Header />
-      <main className="max-w-2xl mx-auto px-4 py-6 animate-fade-in">
+      <main className="max-w-2xl mx-auto px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] animate-fade-in">
         {children}
       </main>
     </div>

@@ -10,7 +10,7 @@ import { useAuth } from '../hooks/useAuth'
 import { buildRankingStats } from '../utils/ranking'
 
 export function HomePage() {
-  const { isAdmin } = useAuth()
+  const { user, isAdmin, myPlayer } = useAuth()
   const { players, loading: playersLoading } = usePlayers()
   const { games, loading: gamesLoading } = useGames()
   const { results, loading: resultsLoading } = useResults()
@@ -39,6 +39,38 @@ export function HomePage() {
         <p className="text-white/55 text-sm mt-3 max-w-md mx-auto leading-relaxed">
           ポーカーチェイスなどで友達と遊んだ試合結果を記録し、Discord内のランキングとして共有できるWebアプリです。
         </p>
+        {!user && (
+          <div className="mt-4 max-w-md mx-auto">
+            <p className="text-white/50 text-sm leading-relaxed">
+              ゲストとして閲覧中です。ランキングや試合の閲覧はこのままお楽しみください。
+            </p>
+            <p className="text-white/45 text-sm mt-2 leading-relaxed">
+              リーグに<strong className="text-white/70">参加して試合結果にエントリー</strong>
+              するには、右上の
+              <Link to="/register" className="text-gold-400/90 hover:text-gold-300 mx-1">
+                新規登録
+              </Link>
+              または
+              <Link to="/login" className="text-gold-400/90 hover:text-gold-300 mx-1">
+                ログイン
+              </Link>
+              からプロフィールを登録してください。
+            </p>
+          </div>
+        )}
+        {user && myPlayer && (
+          <p className="text-gold-400/80 text-sm mt-2">
+            ようこそ、{myPlayer.name} さん
+          </p>
+        )}
+        {user && !myPlayer && !isAdmin && (
+          <p className="text-amber-400/85 text-sm mt-2">
+            プレイヤー登録が未完了です。
+            <Link to="/register" className="underline ml-1 hover:text-amber-300">
+              登録へ進む
+            </Link>
+          </p>
+        )}
       </div>
 
       {loading ? (
