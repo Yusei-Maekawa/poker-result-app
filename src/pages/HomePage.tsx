@@ -36,6 +36,9 @@ export function HomePage() {
         <p className="text-gold-400/80 text-sm mt-1 font-medium tracking-wider uppercase">
           Season 1
         </p>
+        <p className="text-white/55 text-sm mt-3 max-w-md mx-auto leading-relaxed">
+          ポーカーチェイスなどで友達と遊んだ試合結果を記録し、Discord内のランキングとして共有できるWebアプリです。
+        </p>
       </div>
 
       {loading ? (
@@ -81,8 +84,18 @@ export function HomePage() {
 
           {/* 管理者向けアクション */}
           {isAdmin && (
-            <div className="mt-6">
-              <Link to="/games/new" className="btn-primary w-full flex items-center justify-center gap-2 text-base">
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Link
+                to="/players"
+                className="btn-secondary w-full flex items-center justify-center gap-2 text-base"
+              >
+                <span>👤</span>
+                <span>プレイヤーを追加</span>
+              </Link>
+              <Link
+                to="/games/new"
+                className="btn-primary w-full flex items-center justify-center gap-2 text-base"
+              >
                 <span>＋</span>
                 <span>試合結果を追加</span>
               </Link>

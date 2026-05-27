@@ -56,22 +56,37 @@ export function useResults() {
 export function useGameResults(gameId: string) {
   const [results, setResults] = useState<Result[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!gameId) return
-    const q = query(
-      collection(db, paths.results),
-      where('gameId', '==', gameId),
-      orderBy('rank', 'asc'),
-    )
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setResults(
-        snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Result),
-      )
+    if (!gameId) {
+      setResults([])
       setLoading(false)
-    })
+      setError(null)
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+
+    const q = query(collection(db, paths.results), where('gameId', '==', gameId))
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const data = snapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }) as Result)
+          .sort((a, b) => a.rank - b.rank)
+        setResults(data)
+        setLoading(false)
+      },
+      (err) => {
+        console.error(err)
+        setError('試合結果の取得に失敗しました')
+        setLoading(false)
+      },
+    )
     return unsubscribe
   }, [gameId])
 
-  return { results, loading }
+  return { results, loading, error }
 }

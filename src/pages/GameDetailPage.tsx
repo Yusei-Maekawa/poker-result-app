@@ -6,6 +6,7 @@ import { usePlayers } from '../hooks/usePlayers'
 import { useGames } from '../hooks/useGames'
 import { useGameResults } from '../hooks/useResults'
 import { buildDiscordMessage } from '../utils/discord'
+import { getFirebaseErrorMessage } from '../utils/firebaseError'
 import type { ResultWithPlayer } from '../types'
 
 const RANK_EMOJI: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
@@ -14,8 +15,13 @@ export function GameDetailPage() {
   const { gameId } = useParams<{ gameId: string }>()
   const { players, loading: playersLoading } = usePlayers()
   const { games, loading: gamesLoading } = useGames()
-  const { results, loading: resultsLoading } = useGameResults(gameId ?? '')
+  const {
+    results,
+    loading: resultsLoading,
+    error: resultsError,
+  } = useGameResults(gameId ?? '')
   const [copied, setCopied] = useState(false)
+  const [copyError, setCopyError] = useState('')
 
   const loading = playersLoading || gamesLoading || resultsLoading
 
@@ -34,9 +40,40 @@ export function GameDetailPage() {
   const handleCopy = async () => {
     if (!game) return
     const text = buildDiscordMessage(game, resultsWithPlayer)
-    await navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+
+    try {
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(text)
+      } else {
+        const textarea = document.createElement('textarea')
+        textarea.value = text
+        textarea.setAttribute('readonly', 'true')
+        textarea.style.position = 'fixed'
+        textarea.style.opacity = '0'
+        document.body.appendChild(textarea)
+        textarea.focus()
+        textarea.select()
+
+        const copiedByFallback = document.execCommand('copy')
+        document.body.removeChild(textarea)
+
+        if (!copiedByFallback) {
+          throw new Error('copy-failed')
+        }
+      }
+
+      setCopyError('')
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (error) {
+      console.error(error)
+      setCopyError(
+        getFirebaseErrorMessage(
+          error,
+          'コピーに失敗しました。下の共有文を手動でコピーしてください。',
+        ),
+      )
+    }
   }
 
   if (loading) return <Layout><Loading /></Layout>
@@ -86,43 +123,47 @@ export function GameDetailPage() {
         <h2 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3">
           結果
         </h2>
-        <div className="space-y-2">
-          {resultsWithPlayer.map((r) => {
-            const emoji = RANK_EMOJI[r.rank]
-            const pointStr = r.point >= 0 ? `+${r.point}` : `${r.point}`
-            return (
-              <div
-                key={r.id}
-                className={`flex items-center gap-3 p-2.5 rounded-lg ${
-                  r.rank === 1 ? 'bg-gold-500/[0.08]' : 'bg-white/[0.03]'
-                }`}
-              >
-                <span className="w-7 text-center text-lg">
-                  {emoji ?? <span className="text-white/40 font-mono text-sm">{r.rank}位</span>}
-                </span>
-                {!emoji && (
-                  <span className="w-7 text-center text-white/40 font-mono text-sm -ml-7">
-                    {r.rank}位
-                  </span>
-                )}
+        {resultsError ? (
+          <p className="text-red-300 text-sm">{resultsError}</p>
+        ) : (
+          <div className="space-y-2">
+            {resultsWithPlayer.map((r) => {
+              const emoji = RANK_EMOJI[r.rank]
+              const pointStr = r.point >= 0 ? `+${r.point}` : `${r.point}`
+              return (
                 <div
-                  className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center
-                             text-sm font-bold flex-shrink-0"
-                >
-                  {r.player.icon}
-                </div>
-                <span className="flex-1 text-white font-medium">{r.player.name}</span>
-                <span
-                  className={`font-mono font-bold text-base ${
-                    r.point >= 0 ? 'text-gold-400' : 'text-red-400'
+                  key={r.id}
+                  className={`flex items-center gap-3 p-2.5 rounded-lg ${
+                    r.rank === 1 ? 'bg-gold-500/[0.08]' : 'bg-white/[0.03]'
                   }`}
                 >
-                  {pointStr}pt
-                </span>
-              </div>
-            )
-          })}
-        </div>
+                  <span className="w-7 text-center text-lg">
+                    {emoji ?? <span className="text-white/40 font-mono text-sm">{r.rank}位</span>}
+                  </span>
+                  {!emoji && (
+                    <span className="w-7 text-center text-white/40 font-mono text-sm -ml-7">
+                      {r.rank}位
+                    </span>
+                  )}
+                  <div
+                    className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center
+                             text-sm font-bold flex-shrink-0"
+                  >
+                    {r.player.icon}
+                  </div>
+                  <span className="flex-1 text-white font-medium">{r.player.name}</span>
+                  <span
+                    className={`font-mono font-bold text-base ${
+                      r.point >= 0 ? 'text-gold-400' : 'text-red-400'
+                    }`}
+                  >
+                    {pointStr}pt
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Discord共有文 */}
@@ -145,6 +186,9 @@ export function GameDetailPage() {
         <pre className="text-white/70 text-xs font-mono whitespace-pre-wrap bg-black/30 rounded-lg p-3 leading-relaxed overflow-x-auto">
           {discordText}
         </pre>
+        {copyError && (
+          <p className="text-red-300 text-xs mt-3">{copyError}</p>
+        )}
       </div>
     </Layout>
   )

@@ -25,19 +25,40 @@ export function Header() {
           </Link>
 
           {/* 認証ボタン */}
-          {isAdmin ? (
+          {user ? (
             <div className="flex items-center gap-2">
-              <img
-                src={user?.photoURL ?? ''}
-                alt={user?.displayName ?? ''}
-                className="w-7 h-7 rounded-full ring-1 ring-gold-500/50"
-              />
-              <button
-                onClick={logout}
-                className="text-white/50 hover:text-white/80 text-xs transition-colors"
-              >
-                ログアウト
-              </button>
+              {user.photoURL ? (
+                <img
+                  src={user.photoURL}
+                  alt={user.displayName ?? ''}
+                  className={`w-7 h-7 rounded-full ring-1 ${
+                    isAdmin ? 'ring-gold-500/50' : 'ring-white/20'
+                  }`}
+                />
+              ) : (
+                <div
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                    isAdmin ? 'bg-gold-500/20 text-gold-400' : 'bg-white/10 text-white/60'
+                  }`}
+                >
+                  {(user.displayName ?? user.email ?? '?').slice(0, 1)}
+                </div>
+              )}
+              <div className="text-right">
+                <p
+                  className={`text-[10px] ${
+                    isAdmin ? 'text-gold-400/80' : 'text-white/35'
+                  }`}
+                >
+                  {isAdmin ? '管理者ログイン中' : '閲覧用ログイン中'}
+                </p>
+                <button
+                  onClick={logout}
+                  className="text-white/50 hover:text-white/80 text-xs transition-colors"
+                >
+                  ログアウト
+                </button>
+              </div>
             </div>
           ) : (
             <button

@@ -45,6 +45,19 @@ VITE_FIREBASE_PROJECT_ID=your-project
 VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
 VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
 VITE_FIREBASE_APP_ID=1:123456789:web:abc...
+VITE_FIREBASE_MEASUREMENT_ID=G-XXXXXXXXXX
+VITE_ADMIN_UIDS=your_firebase_uid
+```
+
+`VITE_ADMIN_UIDS` は初期管理者（ブートストラップ管理者）です。
+この UID に含まれるユーザーだけが、最初に GUI から他の管理者を追加できます。
+
+カンマ区切りで複数指定できます。
+
+例:
+
+```env
+VITE_ADMIN_UIDS=uid1,uid2,uid3
 ```
 
 ### 5. Firestore Security Rules を設定
@@ -58,7 +71,10 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /leagues/{leagueId}/{collection}/{docId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      // "your_firebase_uid" を自分のUIDに置き換える
+      // ここで指定した初期管理者が GUI から追加管理者を管理します
+      allow write: if request.auth != null
+        && request.auth.uid in ['your_firebase_uid'];
     }
   }
 }
@@ -94,8 +110,9 @@ npm run dev
 
 1. アプリを開き、Header の「管理者ログイン」をクリック
 2. Google アカウントでログイン
-3. 「Players」→ プレイヤーを追加
-4. 「+ 追加」→ 試合結果を追加
+3. 「Players」→ 必要なら「管理者設定」から追加管理者を登録
+4. 「Players」→ プレイヤーを追加
+5. 「+ 追加」→ 試合結果を追加
 
 ---
 
@@ -124,6 +141,8 @@ VITE_FIREBASE_PROJECT_ID
 VITE_FIREBASE_STORAGE_BUCKET
 VITE_FIREBASE_MESSAGING_SENDER_ID
 VITE_FIREBASE_APP_ID
+VITE_FIREBASE_MEASUREMENT_ID
+VITE_ADMIN_UIDS
 ```
 
 ### Firebase Authentication の承認済みドメイン設定
@@ -162,6 +181,12 @@ leagues/
       - isActive: boolean
       - createdAt: Timestamp
       - updatedAt: Timestamp
+
+    admins/{uid}
+      - uid: string
+      - note: string
+      - addedBy: string
+      - createdAt: Timestamp
 
     games/{gameId}
       - gameNo: number
