@@ -7,11 +7,20 @@ import {
   serverTimestamp,
   query,
   orderBy,
+  where,
   getDocs,
   writeBatch,
 } from 'firebase/firestore'
 import { db, paths } from '../firebase'
 import type { Game } from '../types'
+import { sanitizeUserText } from '../utils/sanitizeUserText'
+
+function sanitizeGameText(params: { appName: string; memo: string }) {
+  return {
+    appName: sanitizeUserText(params.appName).trim(),
+    memo: sanitizeUserText(params.memo).trim(),
+  }
+}
 
 export function useGames() {
   const [games, setGames] = useState<Game[]>([])
@@ -48,11 +57,12 @@ export function useGames() {
     const snapshot = await getDocs(collection(db, paths.games))
     const gameNo = snapshot.size + 1
 
+    const { appName, memo } = sanitizeGameText(params)
     const docRef = await addDoc(collection(db, paths.games), {
       gameNo,
       date: params.date,
-      appName: params.appName.trim(),
-      memo: params.memo.trim(),
+      appName,
+      memo,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     })
@@ -75,11 +85,12 @@ export function useGames() {
     const gameRef = doc(gamesRef)
     const batch = writeBatch(db)
 
+    const { appName, memo } = sanitizeGameText(params)
     batch.set(gameRef, {
       gameNo,
       date: params.date,
-      appName: params.appName.trim(),
-      memo: params.memo.trim(),
+      appName,
+      memo,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     })
@@ -98,5 +109,70 @@ export function useGames() {
     return { id: gameRef.id, gameNo }
   }
 
-  return { games, loading, error, addGame, addGameWithResults }
+  const updateGameWithResults = async (
+    gameId: string,
+    params: {
+      date: string
+      appName: string
+      memo: string
+      entries: { playerId: string; rank: number; point: number }[]
+    },
+  ): Promise<void> => {
+    const resultsRef = collection(db, paths.results)
+    const existingResults = await getDocs(
+      query(resultsRef, where('gameId', '==', gameId)),
+    )
+
+    const batch = writeBatch(db)
+    const gameRef = doc(db, paths.games, gameId)
+
+    const { appName, memo } = sanitizeGameText(params)
+    batch.update(gameRef, {
+      date: params.date,
+      appName,
+      memo,
+      updatedAt: serverTimestamp(),
+    })
+
+    for (const resultDoc of existingResults.docs) {
+      batch.delete(resultDoc.ref)
+    }
+
+    for (const entry of params.entries) {
+      const resultRef = doc(resultsRef)
+      batch.set(resultRef, {
+        gameId,
+        ...entry,
+        createdAt: serverTimestamp(),
+      })
+    }
+
+    await batch.commit()
+  }
+
+  const deleteGame = async (gameId: string): Promise<void> => {
+    const resultsRef = collection(db, paths.results)
+    const existingResults = await getDocs(
+      query(resultsRef, where('gameId', '==', gameId)),
+    )
+
+    const batch = writeBatch(db)
+    batch.delete(doc(db, paths.games, gameId))
+
+    for (const resultDoc of existingResults.docs) {
+      batch.delete(resultDoc.ref)
+    }
+
+    await batch.commit()
+  }
+
+  return {
+    games,
+    loading,
+    error,
+    addGame,
+    addGameWithResults,
+    updateGameWithResults,
+    deleteGame,
+  }
 }

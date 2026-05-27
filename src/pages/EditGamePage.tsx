@@ -1,9 +1,10 @@
-import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams, Link } from 'react-router-dom'
 import { Layout, PageHeader } from '../components/Layout'
 import { Loading } from '../components/Loading'
-import { usePlayers, useActivePlayers } from '../hooks/usePlayers'
+import { usePlayers } from '../hooks/usePlayers'
 import { useGames } from '../hooks/useGames'
+import { useGameResults } from '../hooks/useResults'
 import { useAuth } from '../hooks/useAuth'
 import { calculatePoint } from '../utils/point'
 import { LimitedTextField } from '../components/LimitedTextField'
@@ -11,24 +12,46 @@ import { validateGameForm, parseRankInput } from '../utils/validateGame'
 import { GAME_LIMITS } from '../utils/validationLimits'
 import { getFirebaseErrorMessage } from '../utils/firebaseError'
 
-export function NewGamePage() {
+export function EditGamePage() {
+  const { gameId } = useParams<{ gameId: string }>()
   const navigate = useNavigate()
   const { isAdmin, loading: authLoading } = useAuth()
   const { players, loading: playersLoading } = usePlayers()
-  const { addGameWithResults } = useGames()
+  const { games, loading: gamesLoading, updateGameWithResults } = useGames()
+  const { results, loading: resultsLoading } = useGameResults(gameId ?? '')
 
-  const activePlayers = useActivePlayers(players).filter((p) => p.authUid)
+  const game = games.find((g) => g.id === gameId)
 
-  const today = new Date().toISOString().slice(0, 10)
-  const [date, setDate] = useState(today)
-  const [appName, setAppName] = useState('PokerStars')
+  const [date, setDate] = useState('')
+  const [appName, setAppName] = useState('')
   const [memo, setMemo] = useState('')
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([])
   const [rankMap, setRankMap] = useState<Record<string, number>>({})
+  const [initialized, setInitialized] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  if (authLoading || playersLoading) return <Layout><Loading /></Layout>
+  useEffect(() => {
+    if (!game || resultsLoading || initialized) return
+
+    setDate(game.date)
+    setAppName(game.appName)
+    setMemo(game.memo)
+
+    const ids = results.map((r) => r.playerId)
+    setSelectedPlayerIds(ids)
+
+    const ranks: Record<string, number> = {}
+    for (const r of results) {
+      ranks[r.playerId] = r.rank
+    }
+    setRankMap(ranks)
+    setInitialized(true)
+  }, [game, results, resultsLoading, initialized])
+
+  const loading = authLoading || playersLoading || gamesLoading || resultsLoading
+
+  if (loading) return <Layout><Loading /></Layout>
 
   if (!isAdmin) {
     return (
@@ -41,13 +64,28 @@ export function NewGamePage() {
     )
   }
 
+  if (!game) {
+    return (
+      <Layout>
+        <div className="card py-12 text-center">
+          <p className="text-white/30 mb-4">試合が見つかりません</p>
+          <Link to="/games" className="btn-secondary text-sm">試合一覧へ</Link>
+        </div>
+      </Layout>
+    )
+  }
+
+  const participantIds = new Set(results.map((r) => r.playerId))
+  const selectablePlayers = players.filter(
+    (p) => p.authUid && (p.isActive || participantIds.has(p.id)),
+  )
+
   const togglePlayer = (playerId: string) => {
     setSelectedPlayerIds((prev) =>
       prev.includes(playerId)
         ? prev.filter((id) => id !== playerId)
         : [...prev, playerId],
     )
-    // 選択解除時にrankMapからも消す
     setRankMap((prev) => {
       const next = { ...prev }
       if (next[playerId]) delete next[playerId]
@@ -67,6 +105,8 @@ export function NewGamePage() {
   }
 
   const handleSubmit = async () => {
+    if (!gameId) return
+
     const validationError = validateGameForm(
       date,
       appName,
@@ -78,6 +118,7 @@ export function NewGamePage() {
       setError(validationError)
       return
     }
+
     setError('')
     setSubmitting(true)
 
@@ -89,20 +130,14 @@ export function NewGamePage() {
         return { playerId, rank, point }
       })
 
-      const { id: gameId } = await addGameWithResults({
-        date,
-        appName,
-        memo,
-        entries,
-      })
-
+      await updateGameWithResults(gameId, { date, appName, memo, entries })
       navigate(`/games/${gameId}`)
     } catch (e) {
       console.error(e)
       setError(
         getFirebaseErrorMessage(
           e,
-          '保存に失敗しました。再試行してください。',
+          '更新に失敗しました。再試行してください。',
         ),
       )
       setSubmitting(false)
@@ -113,14 +148,16 @@ export function NewGamePage() {
 
   return (
     <Layout>
-      <Link to="/games" className="text-white/40 hover:text-white/70 text-sm transition-colors mb-4 inline-block">
-        ← 試合一覧
+      <Link
+        to={`/games/${gameId}`}
+        className="text-white/40 hover:text-white/70 text-sm transition-colors mb-4 inline-block"
+      >
+        ← 試合詳細
       </Link>
 
-      <PageHeader title="試合結果を追加" />
+      <PageHeader title={`第${game.gameNo}戦を編集`} />
 
       <div className="space-y-5">
-        {/* 基本情報 */}
         <div className="card px-4 py-4 space-y-4">
           <h2 className="text-white/60 text-xs font-semibold uppercase tracking-wider">
             基本情報
@@ -138,7 +175,6 @@ export function NewGamePage() {
 
           <LimitedTextField
             label="使用アプリ名"
-            placeholder="例: PokerStars, GGPoker"
             value={appName}
             maxLength={GAME_LIMITS.appName}
             hint="ポーカーアプリ名（40文字まで）"
@@ -149,15 +185,13 @@ export function NewGamePage() {
             label="メモ"
             optional
             multiline
-            placeholder="例: 友達宅で4人戦"
             value={memo}
             maxLength={GAME_LIMITS.memo}
-            hint="試合の補足（100文字まで・Discord共有文にも載ります）"
+            hint="試合の補足（100文字まで）"
             onChange={(e) => setMemo(e.target.value)}
           />
         </div>
 
-        {/* 参加者選択 */}
         <div className="card px-4 py-4">
           <h2 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3">
             参加者を選択
@@ -166,37 +200,28 @@ export function NewGamePage() {
             </span>
           </h2>
 
-          {activePlayers.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-white/30 text-sm mb-3">プレイヤーがいません</p>
-              <Link to="/players" className="text-gold-400 text-sm hover:text-gold-300">
-                プレイヤーを追加する →
-              </Link>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {activePlayers.map((player) => {
-                const selected = selectedPlayerIds.includes(player.id)
-                return (
-                  <button
-                    key={player.id}
-                    onClick={() => togglePlayer(player.id)}
-                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-left transition-all duration-150 ${
-                      selected
-                        ? 'bg-gold-500/15 border-gold-500/40 text-white'
-                        : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/[0.08]'
-                    }`}
-                  >
-                    <span className="text-base">{player.icon || player.name.slice(0, 2)}</span>
-                    <span className="text-sm font-medium truncate">{player.name}</span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {selectablePlayers.map((player) => {
+              const selected = selectedPlayerIds.includes(player.id)
+              return (
+                <button
+                  key={player.id}
+                  type="button"
+                  onClick={() => togglePlayer(player.id)}
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-left transition-all duration-150 ${
+                    selected
+                      ? 'bg-gold-500/15 border-gold-500/40 text-white'
+                      : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/[0.08]'
+                  }`}
+                >
+                  <span className="text-base">{player.icon || player.name.slice(0, 2)}</span>
+                  <span className="text-sm font-medium truncate">{player.name}</span>
+                </button>
+              )
+            })}
+          </div>
         </div>
 
-        {/* 順位入力 */}
         {selectedPlayerIds.length >= 2 && (
           <div className="card px-4 py-4">
             <h2 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3">
@@ -206,7 +231,7 @@ export function NewGamePage() {
 
             <div className="space-y-2">
               {selectedPlayerIds.map((pid) => {
-                const player = activePlayers.find((p) => p.id === pid)
+                const player = selectablePlayers.find((p) => p.id === pid)
                 if (!player) return null
                 const rank = rankMap[pid] ?? ''
                 const point = rank ? calculatePoint(Number(rank), n) : null
@@ -221,7 +246,11 @@ export function NewGamePage() {
                     </span>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {point !== null && (
-                        <span className={`font-mono text-xs w-12 text-right ${point >= 0 ? 'text-gold-400' : 'text-red-400'}`}>
+                        <span
+                          className={`font-mono text-xs w-12 text-right ${
+                            point >= 0 ? 'text-gold-400' : 'text-red-400'
+                          }`}
+                        >
                           {point >= 0 ? `+${point}` : point}pt
                         </span>
                       )}
@@ -230,7 +259,6 @@ export function NewGamePage() {
                         min={1}
                         max={n}
                         className="input w-16 text-center text-base font-mono py-1.5"
-                        placeholder="—"
                         value={rank}
                         onChange={(e) => setRank(pid, parseRankInput(e.target.value))}
                       />
@@ -240,50 +268,21 @@ export function NewGamePage() {
                 )
               })}
             </div>
-
-            {/* プレビュー */}
-            {selectedPlayerIds.every((pid) => rankMap[pid]) && (
-              <div className="mt-4 pt-4 border-t border-white/[0.08]">
-                <p className="text-white/40 text-xs mb-2">プレビュー（順位順）</p>
-                <div className="space-y-1">
-                  {[...selectedPlayerIds]
-                    .sort((a, b) => (rankMap[a] ?? 99) - (rankMap[b] ?? 99))
-                    .map((pid) => {
-                      const player = activePlayers.find((p) => p.id === pid)
-                      const rank = rankMap[pid]
-                      const point = calculatePoint(rank, n)
-                      const emoji: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
-                      return (
-                        <div key={pid} className="flex items-center gap-2 text-sm">
-                          <span className="w-6 text-center">{emoji[rank] ?? `${rank}位`}</span>
-                          {!emoji[rank] && <span className="w-6 text-center text-white/50 text-xs">{rank}位</span>}
-                          <span className="flex-1 text-white/80">{player?.name}</span>
-                          <span className={`font-mono text-xs ${point >= 0 ? 'text-gold-400' : 'text-red-400'}`}>
-                            {point >= 0 ? `+${point}` : point}pt
-                          </span>
-                        </div>
-                      )
-                    })}
-                </div>
-              </div>
-            )}
           </div>
         )}
 
-        {/* エラー */}
         {error && (
           <div className="bg-red-900/30 border border-red-800/40 rounded-lg px-4 py-3">
             <p className="text-red-300 text-sm">{error}</p>
           </div>
         )}
 
-        {/* 保存ボタン */}
         <button
           onClick={handleSubmit}
           disabled={submitting}
           className="btn-primary w-full text-base py-3"
         >
-          {submitting ? '保存中...' : '試合結果を保存'}
+          {submitting ? '更新中...' : '変更を保存'}
         </button>
       </div>
     </Layout>

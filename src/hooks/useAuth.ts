@@ -8,12 +8,18 @@ import {
 import { doc, onSnapshot } from 'firebase/firestore'
 import { auth, db, googleProvider, paths } from '../firebase'
 import { isBootstrapAdminUid } from '../utils/admin'
+import { useMyPlayer } from './useMyPlayer'
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [adminLoading, setAdminLoading] = useState(true)
   const [isManagedAdmin, setIsManagedAdmin] = useState(false)
+  const {
+    player: myPlayer,
+    loading: playerLoading,
+    hasPlayerProfile,
+  } = useMyPlayer(user?.uid)
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
@@ -66,14 +72,21 @@ export function useAuth() {
   const isBootstrapAdmin = isBootstrapAdminUid(user?.uid)
   const isAdmin = isBootstrapAdmin || isManagedAdmin
   const canManageAdmins = isBootstrapAdmin
-  const loading = authLoading || adminLoading
+  const loading = authLoading || (user ? adminLoading || playerLoading : false)
+
+  /** 参加者として BAN（閲覧は可・試合参加・ランキング集計は不可）。管理者にはバナーを出さない */
+  const isPlayerParticipationSuspended =
+    !!user && !!myPlayer && !myPlayer.isActive && !isAdmin
 
   return {
     user,
+    myPlayer,
+    hasPlayerProfile,
     loading,
     isAdmin,
     isBootstrapAdmin,
     canManageAdmins,
+    isPlayerParticipationSuspended,
     login,
     logout,
   }

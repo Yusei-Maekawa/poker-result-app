@@ -63,8 +63,8 @@ export function RankingCard({ stat, rank, compact = false }: RankingCardProps) {
         {/* 名前 */}
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-white text-base truncate">{stat.player.name}</p>
-          <p className="text-white/40 text-xs">
-            {stat.playCount}試合 / 優勝{stat.winCount}回
+          <p className="text-white/40 text-xs mt-0.5">
+            {stat.playCount}試合 · 優勝{stat.winCount} · 入賞率{stat.podiumRate}%
           </p>
         </div>
 
@@ -77,20 +77,26 @@ export function RankingCard({ stat, rank, compact = false }: RankingCardProps) {
         </div>
       </div>
 
-      {/* 詳細スタッツ */}
-      <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-white/6">
-        <Stat label="入賞率" value={`${stat.podiumRate}%`} />
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 pt-3 border-t border-white/6">
         <Stat label="平均順位" value={`${stat.avgRank}`} />
-        <Stat label="最下位" value={`${stat.lastPlaceCount}回`} />
-        <Stat label="参加" value={`${stat.playCount}回`} />
+        <Stat label="3位以内" value={`${stat.podiumCount}回`} />
+        <Stat label="最下位" value={`${stat.lastPlaceCount}回`} className="col-span-2 sm:col-span-1" />
       </div>
     </div>
   )
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({
+  label,
+  value,
+  className = '',
+}: {
+  label: string
+  value: string
+  className?: string
+}) {
   return (
-    <div className="text-center">
+    <div className={`text-center ${className}`}>
       <p className="text-white/80 text-sm font-mono font-medium">{value}</p>
       <p className="text-white/35 text-xs mt-0.5">{label}</p>
     </div>

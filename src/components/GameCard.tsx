@@ -15,7 +15,8 @@ export function GameCard({ game, results, players, compact = false }: GameCardPr
   const playerMap = new Map(players.map((p) => [p.id, p]))
 
   const winner = sorted.find((r) => r.rank === 1)
-  const winnerName = winner ? (playerMap.get(winner.playerId)?.name ?? '—') : '—'
+  const winnerPlayer = winner ? playerMap.get(winner.playerId) : undefined
+  const winnerName = winnerPlayer && winnerPlayer.isActive ? winnerPlayer.name : '—'
   const top3 = sorted.slice(0, 3)
 
   const formattedDate = formatDate(game.date)
@@ -62,7 +63,9 @@ export function GameCard({ game, results, players, compact = false }: GameCardPr
           return (
             <div key={r.id} className="flex items-center gap-2">
               <span className="w-5 text-sm">{RANK_EMOJI[r.rank]}</span>
-              <span className="text-white/80 text-sm flex-1">{player?.name ?? '—'}</span>
+              <span className="text-white/80 text-sm flex-1">
+                {player && player.isActive ? player.name : '—'}
+              </span>
               <span className={`font-mono text-xs ${r.point >= 0 ? 'text-gold-400/70' : 'text-red-400/70'}`}>
                 {pointStr}
               </span>

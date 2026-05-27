@@ -2,6 +2,7 @@ import { Timestamp } from 'firebase/firestore'
 
 export interface Player {
   id: string
+  authUid?: string   // Firebase UID（1アカウント1プレイヤー。旧データは未設定の場合あり）
   name: string
   icon: string       // 絵文字 or 1〜2文字のイニシャル
   memo: string

@@ -1,5 +1,7 @@
 import type { Game, ResultWithPlayer } from '../types'
 
+const RANK_EMOJI: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
+
 /**
  * Discord 共有文を生成する
  */
@@ -8,33 +10,22 @@ export function buildDiscordMessage(
   results: ResultWithPlayer[],
 ): string {
   const sorted = [...results].sort((a, b) => a.rank - b.rank)
-  const rankEmoji: Record<number, string> = {
-    1: '🥇',
-    2: '🥈',
-    3: '🥉',
-  }
 
   const lines: string[] = [
-    `🃏 **ポーカーリーグ第${game.gameNo}戦 結果** 🃏`,
-    `📅 ${formatDate(game.date)}`,
-    `🎮 ${game.appName}`,
+    `🃏 **ポーカーリーグ 第${game.gameNo}戦 結果** 🃏`,
+    `📅 ${formatDate(game.date)}  ·  🎮 ${game.appName}  ·  👥 ${sorted.length}人`,
     '',
-    '━━━━━━━━━━━━━━━━━',
-    '',
+    '```',
+    ...sorted.map((r) => {
+      const emoji = RANK_EMOJI[r.rank] ?? `${r.rank}位`
+      const pointStr = r.point >= 0 ? `+${r.point}pt` : `${r.point}pt`
+      return `${emoji}  ${r.player.name}  ${pointStr}`
+    }),
+    '```',
   ]
 
-  for (const r of sorted) {
-    const emoji = rankEmoji[r.rank] ?? `${r.rank}位`
-    const pointStr = r.point >= 0 ? `+${r.point}pt` : `${r.point}pt`
-    lines.push(`${emoji} ${r.player.name} （${pointStr}）`)
-  }
-
-  lines.push('')
-  lines.push('━━━━━━━━━━━━━━━━━')
-
-  if (game.memo) {
-    lines.push('')
-    lines.push(`📝 ${game.memo}`)
+  if (game.memo.trim()) {
+    lines.push('', `📝 ${game.memo.trim()}`)
   }
 
   return lines.join('\n')

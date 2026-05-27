@@ -38,7 +38,7 @@ export function RankingPage() {
         <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3">
           ポイントルール
         </h3>
-        <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-center">
           {[
             { label: '🥇 1位', pt: '+7' },
             { label: '🥈 2位', pt: '+5' },

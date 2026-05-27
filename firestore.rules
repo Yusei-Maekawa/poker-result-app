@@ -29,7 +29,8 @@ service cloud.firestore {
         && request.resource.data.addedBy == request.auth.uid
         && request.resource.data.note is string
         && request.resource.data.note.size() <= 80
-        && request.resource.data.createdAt is timestamp;
+        // serverTimestamp() はルール評価時点では型判定で落ちることがあるため request.time で検証
+        && request.resource.data.createdAt == request.time;
     }
 
     match /leagues/{leagueId}/admins/{adminUid} {
@@ -45,12 +46,71 @@ service cloud.firestore {
         && adminUid != request.auth.uid;
     }
 
-    // leagues/main 配下の読み取りは全員OK（ログイン不要）
-    // players / games / results の書き込みは管理者のみ
-    match /leagues/{leagueId}/players/{docId} {
-      allow read: if true;
-      allow write: if isLeagueAdmin(leagueId);
+    function isValidPlayerCreate(playerId) {
+      return request.resource.data.keys().hasOnly(
+          ['authUid', 'name', 'icon', 'memo', 'isActive', 'createdAt', 'updatedAt'])
+        && playerId == request.auth.uid
+        && request.resource.data.authUid == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 20
+        && request.resource.data.icon is string
+        && request.resource.data.icon.size() <= 4
+        && request.resource.data.memo is string
+        && request.resource.data.memo.size() <= 80
+        && request.resource.data.isActive == true
+        // serverTimestamp() を許可するため request.time と一致させる
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
     }
+
+    function isValidPlayerUpdate() {
+      return request.resource.data.authUid == resource.data.authUid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.isActive == resource.data.isActive
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 20
+        && request.resource.data.icon is string
+        && request.resource.data.icon.size() <= 4
+        && request.resource.data.memo is string
+        && request.resource.data.memo.size() <= 80
+      // 更新時は updatedAt を serverTimestamp() で request.time に合わせる
+      && request.resource.data.updatedAt == request.time;
+    }
+
+    // 管理者はプレイヤーをBAN（isActiveの切り替え）できる
+    // それ以外（authUid / name / icon / memo / createdAt）は変更不可
+    function isValidPlayerAdminSetActive() {
+      return request.resource.data.authUid == resource.data.authUid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.name == resource.data.name
+        && request.resource.data.icon == resource.data.icon
+        && request.resource.data.memo == resource.data.memo
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.isActive is bool;
+    }
+
+    // players: 閲覧は全員、登録・更新は本人のみ（ドキュメントID = auth UID）
+    match /leagues/{leagueId}/players/{playerId} {
+      allow read: if true;
+      allow create: if isSignedIn()
+        && playerId == request.auth.uid
+        && isValidPlayerCreate(playerId);
+      allow update: if isSignedIn()
+        && (
+          // 自分自身のプロフィール更新
+          (playerId == request.auth.uid
+            && resource.data.authUid == request.auth.uid
+            && resource.data.isActive == true
+            && isValidPlayerUpdate())
+          // 管理者BAN/解除（isActiveのみ）
+          || (isLeagueAdmin(leagueId) && isValidPlayerAdminSetActive())
+        );
+      allow delete: if false;
+    }
+
+    // games / results の書き込みは管理者のみ
 
     match /leagues/{leagueId}/games/{docId} {
       allow read: if true;

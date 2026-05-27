@@ -2,13 +2,16 @@ import { useState, useEffect } from 'react'
 import {
   collection,
   onSnapshot,
-  addDoc,
+  doc,
+  setDoc,
+  updateDoc,
   serverTimestamp,
   query,
   orderBy,
 } from 'firebase/firestore'
 import { db, paths } from '../firebase'
 import type { Player } from '../types'
+import { sanitizeUserText } from '../utils/sanitizeUserText'
 
 export function usePlayers() {
   const [players, setPlayers] = useState<Player[]>([])
@@ -36,22 +39,63 @@ export function usePlayers() {
     return unsubscribe
   }, [])
 
-  const addPlayer = async (params: {
-    name: string
-    icon: string
-    memo: string
-  }) => {
-    await addDoc(collection(db, paths.players), {
-      name: params.name.trim(),
-      icon: params.icon.trim() || params.name.slice(0, 2),
-      memo: params.memo.trim(),
+  const registerPlayer = async (
+    uid: string,
+    params: { name: string; icon: string; memo: string },
+  ) => {
+    const name = sanitizeUserText(params.name).trim()
+    const icon = sanitizeUserText(params.icon).trim() || name.slice(0, 2)
+    const memo = sanitizeUserText(params.memo).trim()
+    await setDoc(doc(db, paths.players, uid), {
+      authUid: uid,
+      name,
+      icon,
+      memo,
       isActive: true,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     })
   }
 
-  return { players, loading, error, addPlayer }
+  const updateOwnPlayer = async (
+    uid: string,
+    params: { name: string; icon: string; memo: string },
+  ) => {
+    const name = sanitizeUserText(params.name).trim()
+    const icon = sanitizeUserText(params.icon).trim() || name.slice(0, 2)
+    const memo = sanitizeUserText(params.memo).trim()
+    await updateDoc(doc(db, paths.players, uid), {
+      name,
+      icon,
+      memo,
+      updatedAt: serverTimestamp(),
+    })
+  }
+
+  const banPlayer = async (uid: string) => {
+    // 管理者がBANする（実質的には削除扱い）
+    await updateDoc(doc(db, paths.players, uid), {
+      isActive: false,
+      updatedAt: serverTimestamp(),
+    })
+  }
+
+  const unbanPlayer = async (uid: string) => {
+    await updateDoc(doc(db, paths.players, uid), {
+      isActive: true,
+      updatedAt: serverTimestamp(),
+    })
+  }
+
+  return {
+    players,
+    loading,
+    error,
+    registerPlayer,
+    updateOwnPlayer,
+    banPlayer,
+    unbanPlayer,
+  }
 }
 
 export function useActivePlayers(players: Player[]) {

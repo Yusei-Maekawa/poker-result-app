@@ -1,6 +1,9 @@
-# Poker League Board v0.1
+# Poker League Board セットアップ
 
-友達内ポーカーリーグの試合結果・ランキング管理アプリ
+友達内ポーカーリーグの試合結果・ランキング管理アプリ（v0.2 時点の手順）
+
+受け入れテストの観点は [test-cases-v0.2.md](./test-cases-v0.2.md) を参照。
+Firestore Security Rules は本番用にリポジトリの `firestore.rules`（または同等の内容）をデプロイすること。以下の簡易例は古い場合がある。
 
 ## セットアップ手順
 
