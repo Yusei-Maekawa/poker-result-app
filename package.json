@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "build:maintenance": "tsc && vite build --mode maintenance",
+    "preview": "vite preview",
+    "deploy:live": "npm run build && npx -y firebase-tools@latest deploy --only hosting",
+    "deploy:maintenance": "npm run build:maintenance && npx -y firebase-tools@latest deploy --only hosting"
   },
   "dependencies": {
     "firebase": "^10.14.1",
