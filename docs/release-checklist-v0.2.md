@@ -28,6 +28,13 @@
 - 追加管理者はアプリの「管理者設定」から登録できる
 - 公開 URL を Discord の友達に共有するだけで開始可能（アカウントは各自 Google + 新規登録）
 
+## メンテナンス画面の切り替え
+
+手順の詳細は **[maintenance-deploy.md](./maintenance-deploy.md)** を参照。
+
+- **再開（本番）**: `npm run deploy:live`
+- **メンテのみ**: `npm run deploy:maintenance`
+
 ## リリース後
 
 - Firestore での誤削除に備え、必要なら定期エクスポートやバックアップ方針を決める（将来 v0.x で機能化予定）
