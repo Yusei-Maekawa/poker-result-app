@@ -7,6 +7,7 @@ import { usePlayers } from '../hooks/usePlayers'
 import { useGames } from '../hooks/useGames'
 import { useResults } from '../hooks/useResults'
 import { useAuth } from '../hooks/useAuth'
+import { APP_NAME } from '../constants/app'
 import { buildRankingStats } from '../utils/ranking'
 
 export function HomePage() {
@@ -29,14 +30,15 @@ export function HomePage() {
     <Layout>
       {/* ヒーロー */}
       <div className="text-center mb-8 mt-2">
-        <div className="text-4xl mb-2">🃏</div>
-        <h1 className="font-display font-black text-3xl text-white tracking-tight">
-          Poker League Board
+        <h1 className="font-display font-black text-3xl lg:text-4xl tracking-tight">
+          <span className="text-gold-400">Rival</span>
+          <span className="text-white/80">t</span>
+          <span className="sr-only">{APP_NAME}</span>
         </h1>
         <p className="text-gold-400/80 text-sm mt-1 font-medium tracking-wider uppercase">
           Season 1
         </p>
-        <p className="text-white/55 text-sm mt-3 max-w-md mx-auto leading-relaxed">
+        <p className="text-white/55 text-sm lg:text-base mt-3 max-w-md lg:max-w-xl mx-auto leading-relaxed">
           ポーカーチェイスなどで友達と遊んだ試合結果を記録し、Discord内のランキングとして共有できるWebアプリです。
         </p>
         {!user && (
@@ -77,42 +79,44 @@ export function HomePage() {
         <Loading />
       ) : (
         <>
-          {/* ランキング上位 */}
-          <section className="mb-8">
-            <SectionHeader title="🏆 ランキング" link="/ranking" linkLabel="全て見る" />
-            {top3Stats.length === 0 ? (
-              <EmptyState text="まだデータがありません" />
-            ) : (
-              <div className="space-y-2">
-                {top3Stats.map((stat, i) => (
-                  <RankingCard key={stat.player.id} stat={stat} rank={i + 1} compact />
-                ))}
-              </div>
-            )}
-          </section>
+          <div className="lg:grid lg:grid-cols-2 lg:gap-8 lg:items-start">
+            {/* ランキング上位 */}
+            <section className="mb-8 lg:mb-0">
+              <SectionHeader title="🏆 ランキング" link="/ranking" linkLabel="全て見る" />
+              {top3Stats.length === 0 ? (
+                <EmptyState text="まだデータがありません" />
+              ) : (
+                <div className="space-y-2">
+                  {top3Stats.map((stat, i) => (
+                    <RankingCard key={stat.player.id} stat={stat} rank={i + 1} compact />
+                  ))}
+                </div>
+              )}
+            </section>
 
-          {/* 直近の試合 */}
-          <section className="mb-8">
-            <SectionHeader title="🎮 直近の試合" link="/games" linkLabel="全て見る" />
-            {recentGames.length === 0 ? (
-              <EmptyState text="まだ試合がありません" />
-            ) : (
-              <div className="space-y-2">
-                {recentGames.map((game) => {
-                  const gameResults = results.filter((r) => r.gameId === game.id)
-                  return (
-                    <GameCard
-                      key={game.id}
-                      game={game}
-                      results={gameResults}
-                      players={players}
-                      compact
-                    />
-                  )
-                })}
-              </div>
-            )}
-          </section>
+            {/* 直近の試合 */}
+            <section className="mb-8 lg:mb-0">
+              <SectionHeader title="🎮 直近の試合" link="/games" linkLabel="全て見る" />
+              {recentGames.length === 0 ? (
+                <EmptyState text="まだ試合がありません" />
+              ) : (
+                <div className="space-y-2">
+                  {recentGames.map((game) => {
+                    const gameResults = results.filter((r) => r.gameId === game.id)
+                    return (
+                      <GameCard
+                        key={game.id}
+                        game={game}
+                        results={gameResults}
+                        players={players}
+                        compact
+                      />
+                    )
+                  })}
+                </div>
+              )}
+            </section>
+          </div>
 
           {/* 管理者向けアクション */}
           {isAdmin && (
@@ -150,7 +154,7 @@ function SectionHeader({
 }) {
   return (
     <div className="flex items-center justify-between mb-3">
-      <h2 className="font-display font-bold text-lg text-white">{title}</h2>
+      <h2 className="font-display font-bold text-lg lg:text-xl text-white">{title}</h2>
       <Link
         to={link}
         className="text-gold-400/70 hover:text-gold-400 text-xs font-medium transition-colors"

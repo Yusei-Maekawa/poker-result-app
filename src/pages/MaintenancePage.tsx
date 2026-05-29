@@ -1,4 +1,5 @@
 import { AuthLayout } from '../components/AuthLayout'
+import { APP_NAME } from '../constants/app'
 
 export default function MaintenancePage() {
   return (
@@ -11,7 +12,7 @@ export default function MaintenancePage() {
           メンテナンス中
         </h2>
         <p className="text-white/60 text-sm leading-relaxed">
-          Poker League Board は現在、シーズン外のため準備中です。
+          {APP_NAME} は現在、シーズン外のため準備中です。
           再開時は Discord でお知らせします。
         </p>
       </div>

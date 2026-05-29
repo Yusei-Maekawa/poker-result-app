@@ -1,4 +1,4 @@
-# Poker League Board v0.2 テストケース
+# Rivalt v0.2 テストケース
 
 ## 目的
 

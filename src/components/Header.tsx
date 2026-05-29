@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
+import { APP_NAME } from '../constants/app'
 import { useAuth } from '../hooks/useAuth'
 
 const NAV = [
@@ -16,13 +17,12 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 bg-felt-900/95 backdrop-blur-md border-b border-white/[0.08]">
-      <div className="max-w-2xl mx-auto px-4">
-        <div className="flex items-center justify-between h-14">
-          <Link to="/" className="flex items-center gap-2">
-            <span className="text-xl">🃏</span>
-            <span className="font-display font-bold text-gold-400 text-lg leading-none">
-              Poker<span className="text-white/80">League</span>
-            </span>
+      <div className="app-container">
+        <div className="flex items-center justify-between h-14 lg:h-16">
+          <Link to="/" className="font-display font-bold text-lg lg:text-xl leading-none">
+            <span className="text-gold-400">Rival</span>
+            <span className="text-white/80">t</span>
+            <span className="sr-only">{APP_NAME}</span>
           </Link>
 
           {user ? (
@@ -97,7 +97,7 @@ export function Header() {
                 <Link
                   key={item.to}
                   to={item.to}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-150 ${
+                  className={`px-3 py-1.5 lg:px-4 lg:py-2 rounded-md text-sm lg:text-base font-medium transition-all duration-150 ${
                     active
                       ? 'bg-gold-500/15 text-gold-400'
                       : 'text-white/50 hover:text-white/80 hover:bg-white/5'

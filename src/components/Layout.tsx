@@ -11,7 +11,7 @@ export function Layout({ children }: LayoutProps) {
     <div className="min-h-dvh bg-felt-texture">
       <BannedParticipationBanner />
       <Header />
-      <main className="max-w-2xl mx-auto px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] animate-fade-in">
+      <main className="app-container py-6 lg:py-8 pb-[max(1.5rem,env(safe-area-inset-bottom))] animate-fade-in">
         {children}
       </main>
     </div>
@@ -28,9 +28,9 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
   return (
     <div className="flex items-start justify-between mb-6">
       <div>
-        <h1 className="font-display font-bold text-2xl text-white">{title}</h1>
+        <h1 className="font-display font-bold text-2xl lg:text-3xl text-white">{title}</h1>
         {subtitle && (
-          <p className="text-white/50 text-sm mt-1">{subtitle}</p>
+          <p className="text-white/50 text-sm lg:text-base mt-1">{subtitle}</p>
         )}
       </div>
       {action && <div className="flex-shrink-0 ml-4">{action}</div>}
