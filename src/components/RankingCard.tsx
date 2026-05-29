@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import type { RankingStat } from '../types'
 
 const MEDAL: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
@@ -31,7 +32,12 @@ export function RankingCard({ stat, rank, compact = false }: RankingCardProps) {
           {stat.player.icon}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-white truncate">{stat.player.name}</p>
+          <Link
+            to={`/players/${stat.player.id}`}
+            className="font-semibold text-white truncate block hover:text-gold-300 transition-colors"
+          >
+            {stat.player.name}
+          </Link>
           <p className="text-white/40 text-xs">{stat.playCount}試合</p>
         </div>
         <div className="text-right">
@@ -62,7 +68,12 @@ export function RankingCard({ stat, rank, compact = false }: RankingCardProps) {
 
         {/* 名前 */}
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-white text-base truncate">{stat.player.name}</p>
+          <Link
+            to={`/players/${stat.player.id}`}
+            className="font-semibold text-white text-base truncate block hover:text-gold-300 transition-colors"
+          >
+            {stat.player.name}
+          </Link>
           <p className="text-white/40 text-xs mt-0.5">
             {stat.playCount}試合 · 優勝{stat.winCount} · 入賞率{stat.podiumRate}%
           </p>

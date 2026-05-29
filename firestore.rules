@@ -121,5 +121,76 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isLeagueAdmin(leagueId);
     }
+
+    match /leagues/{leagueId}/counters/{counterId} {
+      allow read, write: if isLeagueAdmin(leagueId);
+    }
+
+    function isValidActivityMemberJoined() {
+      return request.resource.data.keys().hasOnly(
+          ['type', 'playerId', 'playerName', 'createdAt'])
+        && request.resource.data.type == 'member_joined'
+        && request.resource.data.playerId == request.auth.uid
+        && request.resource.data.playerName is string
+        && request.resource.data.playerName.size() > 0
+        && request.resource.data.playerName.size() <= 20
+        && request.resource.data.createdAt == request.time;
+    }
+
+    function isValidActivityGameAdded() {
+      return request.resource.data.keys().hasOnly(
+          ['type', 'gameId', 'gameNo', 'gameDate', 'gameTime', 'actorUid', 'createdAt'])
+        && request.resource.data.type == 'game_added'
+        && request.resource.data.gameId is string
+        && request.resource.data.gameNo is int
+        && request.resource.data.gameNo > 0
+        && request.resource.data.gameDate is string
+        && request.resource.data.gameDate.size() == 10
+        && request.resource.data.gameTime is string
+        && request.resource.data.gameTime.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+    }
+
+    match /leagues/{leagueId}/activities/{activityId} {
+      allow read: if true;
+      allow create: if isSignedIn()
+        && (
+          isValidActivityMemberJoined()
+          || (isLeagueAdmin(leagueId) && isValidActivityGameAdded())
+        );
+      allow update, delete: if false;
+    }
+
+    function isValidAnnouncementWrite() {
+      return request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 60
+        && request.resource.data.body is string
+        && request.resource.data.body.size() <= 2000
+        && request.resource.data.isPinned is bool
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    function isValidAnnouncementUpdate() {
+      return request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 60
+        && request.resource.data.body is string
+        && request.resource.data.body.size() <= 2000
+        && request.resource.data.isPinned is bool
+        && request.resource.data.authorUid == resource.data.authorUid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    match /leagues/{leagueId}/announcements/{announcementId} {
+      allow read: if true;
+      allow create: if isLeagueAdmin(leagueId) && isValidAnnouncementWrite();
+      allow update: if isLeagueAdmin(leagueId) && isValidAnnouncementUpdate();
+      allow delete: if isLeagueAdmin(leagueId);
+    }
   }
 }

@@ -164,7 +164,7 @@ export function EditGamePage() {
           </h2>
 
           <div>
-            <label className="label">試合日 *</label>
+            <label className="label">開催日 *</label>
             <input
               type="date"
               className="input"

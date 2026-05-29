@@ -7,6 +7,7 @@ import { useGames } from '../hooks/useGames'
 import { useGameResults } from '../hooks/useResults'
 import { useAuth } from '../hooks/useAuth'
 import { buildDiscordMessage } from '../utils/discord'
+import { formatGameDateTime } from '../utils/formatDateTime'
 import { getFirebaseErrorMessage } from '../utils/firebaseError'
 import type { ResultWithPlayer } from '../types'
 
@@ -117,7 +118,7 @@ export function GameDetailPage() {
   }
 
   const discordText = buildDiscordMessage(game, resultsWithPlayer)
-  const formattedDate = formatDate(game.date)
+  const formattedDate = formatGameDateTime(game.date, game.time)
 
   return (
     <Layout>
@@ -203,7 +204,12 @@ export function GameDetailPage() {
                   >
                     {r.player.icon}
                   </div>
-                  <span className="flex-1 text-white font-medium">{r.player.name}</span>
+                  <Link
+                    to={`/players/${r.player.id}`}
+                    className="flex-1 text-white font-medium hover:text-gold-300 transition-colors"
+                  >
+                    {r.player.name}
+                  </Link>
                   <span
                     className={`font-mono font-bold text-base ${
                       r.point >= 0 ? 'text-gold-400' : 'text-red-400'
@@ -244,9 +250,4 @@ export function GameDetailPage() {
       </div>
     </Layout>
   )
-}
-
-function formatDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-')
-  return `${y}年${Number(m)}月${Number(d)}日`
 }

@@ -20,9 +20,9 @@ export function RegisterPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
+  // 既にプロフィールがある場合（再訪問など）
   useEffect(() => {
-    if (loading) return
-    if (hasPlayerProfile) {
+    if (!loading && hasPlayerProfile) {
       navigate('/', { replace: true })
     }
   }, [hasPlayerProfile, loading, navigate])
@@ -35,6 +35,7 @@ export function RegisterPage() {
     } catch (e) {
       console.error(e)
       setError(getFirebaseErrorMessage(e, 'Google ログインに失敗しました。'))
+    } finally {
       setAuthSubmitting(false)
     }
   }
@@ -53,7 +54,10 @@ export function RegisterPage() {
 
     try {
       await registerPlayer(user.uid, form)
-      navigate('/', { replace: true })
+      setSubmitting(false)
+      // Router の競合を避け、登録後はフル遷移でホームを確実に表示
+      window.location.replace('/')
+      return
     } catch (e) {
       console.error(e)
       setError(
@@ -63,7 +67,8 @@ export function RegisterPage() {
     }
   }
 
-  if (loading) {
+  // 未ログイン時の Firebase 認証待ちのみ全画面ローディング（admin 確認中はフォームを出す）
+  if (loading && !user) {
     return (
       <AuthLayout>
         <Loading />

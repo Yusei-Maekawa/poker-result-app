@@ -23,10 +23,36 @@ export interface Game {
   id: string
   gameNo: number
   date: string       // YYYY-MM-DD
+  time?: string      // HH:mm（開催時刻）
   appName: string
   memo: string
   createdAt: Timestamp
   updatedAt: Timestamp
+}
+
+export type ActivityType = 'member_joined' | 'game_added'
+
+export interface Announcement {
+  id: string
+  title: string
+  body: string
+  isPinned: boolean
+  authorUid: string
+  createdAt: Timestamp
+  updatedAt: Timestamp
+}
+
+export interface Activity {
+  id: string
+  type: ActivityType
+  createdAt: Timestamp
+  playerId?: string
+  playerName?: string
+  gameId?: string
+  gameNo?: number
+  gameDate?: string
+  gameTime?: string
+  actorUid?: string
 }
 
 export interface Result {

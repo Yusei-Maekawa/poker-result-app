@@ -2,26 +2,12 @@ import { useMemo } from 'react'
 import { APP_NAME } from '../constants/app'
 import {
   SPLASH_BRAND,
-  SPLASH_CURSOR_ANIM_MS,
   SPLASH_GOLD_LETTER_COUNT,
   SPLASH_LETTER_ANIM_MS,
   SPLASH_LETTER_START_MS,
   SPLASH_LETTER_STAGGER_MS,
-  SPLASH_TAGLINE_ANIM_MS,
-  SPLASH_UNDERLINE_ANIM_MS,
-  splashCursorDelayMs,
-  splashTaglineDelayMs,
-  splashUnderlineDelayMs,
+  splashWriteDurationMs,
 } from '../constants/splash'
-
-/**
- * SplashScreen … 見た目と各要素の animation-delay
- * useSplash … phase の切り替えは splashRevealCompleteMs + HOLD 後（splash.ts 参照）
- *
- * phase ごとの見え方:
- *   in  … isWriting=true  → 文字・カーソル・下線・Season 1 が順にアニメ
- *   out … isWriting=false → アニメは止め、完成形のまま親 div が opacity 0 へ
- */
 
 type SplashPhase = 'in' | 'out'
 
@@ -51,6 +37,10 @@ function SplashBrandTitle({
   reducedMotion: boolean
 }) {
   const letters = SPLASH_BRAND.split('')
+  const underlineDelayMs = splashWriteDurationMs() - 80
+  const taglineDelayMs = splashWriteDurationMs() + 60
+  const cursorDelayMs =
+    SPLASH_LETTER_START_MS + (letters.length - 1) * SPLASH_LETTER_STAGGER_MS + 120
 
   if (reducedMotion) {
     return (
@@ -72,7 +62,6 @@ function SplashBrandTitle({
         className="font-display font-black text-3xl lg:text-4xl tracking-tight flex items-end justify-center"
         aria-hidden
       >
-        {/* 各文字: delay = START + index×STAGGER、長さ = LETTER_ANIM */}
         {letters.map((char, index) => (
           <span
             key={`${char}-${index}`}
@@ -93,32 +82,29 @@ function SplashBrandTitle({
             {char}
           </span>
         ))}
-        {/* カーソル: 最後の文字のあと（out では非表示） */}
         {isWriting && (
           <span
             className="splash-cursor inline-block w-[2px] h-[0.85em] ml-0.5 mb-[0.08em] bg-gold-400/90"
             style={{
-              animationDelay: `${splashCursorDelayMs()}ms`,
-              animationDuration: `${SPLASH_CURSOR_ANIM_MS}ms`,
+              animationDelay: `${cursorDelayMs}ms`,
+              animationDuration: '550ms',
             }}
             aria-hidden
           />
         )}
       </h1>
-      {/* 下線: 書き込み完了の少し手前から伸びる */}
       <div
         className={isWriting ? `splash-underline ${UNDERLINE_CLASS}` : UNDERLINE_CLASS}
         style={
           isWriting
             ? {
-                animationDelay: `${splashUnderlineDelayMs()}ms`,
-                animationDuration: `${SPLASH_UNDERLINE_ANIM_MS}ms`,
+                animationDelay: `${underlineDelayMs}ms`,
+                animationDuration: '450ms',
               }
             : undefined
         }
         aria-hidden
       />
-      {/* Season 1: 書き込み完了直後 */}
       <p
         className={
           isWriting
@@ -128,8 +114,8 @@ function SplashBrandTitle({
         style={
           isWriting
             ? {
-                animationDelay: `${splashTaglineDelayMs()}ms`,
-                animationDuration: `${SPLASH_TAGLINE_ANIM_MS}ms`,
+                animationDelay: `${taglineDelayMs}ms`,
+                animationDuration: '500ms',
               }
             : undefined
         }
@@ -142,7 +128,6 @@ function SplashBrandTitle({
 
 export function SplashScreen({ phase }: Props) {
   const reducedMotion = usePrefersReducedMotion()
-  // out のときは false にして、文字・下線を完成形のままフェードさせる（レイアウト切替しない）
   const isWriting = phase === 'in' && !reducedMotion
 
   return (

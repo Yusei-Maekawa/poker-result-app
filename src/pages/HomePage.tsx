@@ -7,6 +7,10 @@ import { usePlayers } from '../hooks/usePlayers'
 import { useGames } from '../hooks/useGames'
 import { useResults } from '../hooks/useResults'
 import { useAuth } from '../hooks/useAuth'
+import { useAnnouncements } from '../hooks/useAnnouncements'
+import { useActivities } from '../hooks/useActivities'
+import { AnnouncementsSection } from '../components/home/AnnouncementsSection'
+import { ActivityFeedSection } from '../components/home/ActivityFeedSection'
 import { APP_NAME } from '../constants/app'
 import { buildRankingStats } from '../utils/ranking'
 
@@ -15,8 +19,15 @@ export function HomePage() {
   const { players, loading: playersLoading } = usePlayers()
   const { games, loading: gamesLoading } = useGames()
   const { results, loading: resultsLoading } = useResults()
+  const {
+    announcements,
+    loading: announcementsLoading,
+    error: announcementsError,
+  } = useAnnouncements()
+  const { activities, loading: activitiesLoading } = useActivities()
 
   const loading = playersLoading || gamesLoading || resultsLoading
+  const gameIdSet = new Set(games.map((g) => g.id))
 
   const stats = buildRankingStats(players, results)
   const top3Stats = stats.slice(0, 3)
@@ -75,6 +86,18 @@ export function HomePage() {
         )}
       </div>
 
+      <AnnouncementsSection
+        announcements={announcements}
+        loading={announcementsLoading}
+        fetchError={announcementsError}
+        showAdminLink={isAdmin}
+      />
+      <ActivityFeedSection
+        activities={activities}
+        loading={activitiesLoading}
+        gamesExist={(id) => gameIdSet.has(id)}
+      />
+
       {loading ? (
         <Loading />
       ) : (
@@ -122,11 +145,11 @@ export function HomePage() {
           {isAdmin && (
             <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Link
-                to="/players"
+                to="/admin/announcements"
                 className="btn-secondary w-full flex items-center justify-center gap-2 text-base"
               >
-                <span>👤</span>
-                <span>プレイヤーを追加</span>
+                <span>📢</span>
+                <span>お知らせを投稿</span>
               </Link>
               <Link
                 to="/games/new"
@@ -134,6 +157,13 @@ export function HomePage() {
               >
                 <span>＋</span>
                 <span>試合結果を追加</span>
+              </Link>
+              <Link
+                to="/players"
+                className="btn-secondary w-full flex items-center justify-center gap-2 text-base sm:col-span-2"
+              >
+                <span>👤</span>
+                <span>プレイヤー管理</span>
               </Link>
             </div>
           )}
