@@ -12,6 +12,8 @@ import { RankingPage } from './pages/RankingPage'
 import { GamesPage } from './pages/GamesPage'
 import { GameDetailPage } from './pages/GameDetailPage'
 import { PlayersPage } from './pages/PlayersPage'
+import { PlayerDetailPage } from './pages/PlayerDetailPage'
+import { AdminAnnouncementsPage } from './pages/AdminAnnouncementsPage'
 import { NewGamePage } from './pages/NewGamePage'
 import { EditGamePage } from './pages/EditGamePage'
 
@@ -23,17 +25,26 @@ export default function App() {
   )
 }
 
+/** スプラッシュ後も URL を維持するパス（replaceState で / に潰さない） */
+function shouldPreservePathAfterSplash(pathname: string): boolean {
+  if (pathname === '/') return true
+  const preserve = ['/register', '/login', '/profile', '/admin', '/games', '/players', '/ranking']
+  return preserve.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+}
+
 function AppShell() {
   const splashPhase = useSplash()
-  const didSetLaunchHome = useRef(false)
+  const didNormalizeLaunchUrl = useRef(false)
 
   if (splashPhase !== 'done') {
     return <SplashScreen phase={splashPhase === 'out' ? 'out' : 'in'} />
   }
 
-  if (!didSetLaunchHome.current) {
-    didSetLaunchHome.current = true
-    if (window.location.pathname !== '/') {
+  // 起動時のみ: 不明な deep link を / に寄せる（/register 等は維持）
+  if (!didNormalizeLaunchUrl.current) {
+    didNormalizeLaunchUrl.current = true
+    const path = window.location.pathname
+    if (!shouldPreservePathAfterSplash(path)) {
       window.history.replaceState(null, '', '/')
     }
   }
@@ -52,6 +63,8 @@ function AppShell() {
           <Route path="/games/:gameId/edit" element={<EditGamePage />} />
           <Route path="/games/:gameId" element={<GameDetailPage />} />
           <Route path="/players" element={<PlayersPage />} />
+          <Route path="/players/:playerId" element={<PlayerDetailPage />} />
+          <Route path="/admin/announcements" element={<AdminAnnouncementsPage />} />
         </Routes>
       </AuthRedirect>
     </BrowserRouter>

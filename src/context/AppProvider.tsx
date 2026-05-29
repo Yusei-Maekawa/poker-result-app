@@ -14,10 +14,14 @@ import {
   type User,
 } from 'firebase/auth'
 import {
+  Timestamp,
   addDoc,
   collection,
+  deleteDoc,
   doc,
+  getDoc,
   getDocs,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -28,9 +32,12 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { auth, db, googleProvider, paths } from '../firebase'
-import type { Game, Player, Result } from '../types'
+import type { Activity, Announcement, Game, Player, Result } from '../types'
+import { allocateGameNo } from '../utils/allocateGameNo'
 import { isBootstrapAdminUid } from '../utils/admin'
+import { getDefaultGameTime } from '../utils/formatDateTime'
 import { sanitizeUserText } from '../utils/sanitizeUserText'
+import { ANNOUNCEMENT_LIMITS } from '../utils/validationLimits'
 
 function sanitizeGameText(params: { appName: string; memo: string }) {
   return {
@@ -68,10 +75,11 @@ type AppContextValue = {
   games: Game[]
   gamesLoading: boolean
   gamesError: string | null
-  addGame: (params: { date: string; appName: string; memo: string }) => Promise<{
-    id: string
-    gameNo: number
-  }>
+  addGame: (params: {
+    date: string
+    appName: string
+    memo: string
+  }) => Promise<{ id: string; gameNo: number }>
   addGameWithResults: (params: {
     date: string
     appName: string
@@ -96,7 +104,24 @@ type AppContextValue = {
     entries: { gameId: string; playerId: string; rank: number; point: number }[],
   ) => Promise<void>
 
-  /** ホーム表示用: players / games / results の初回取得が終わったか */
+  announcements: Announcement[]
+  announcementsLoading: boolean
+  announcementsError: string | null
+  createAnnouncement: (params: {
+    title: string
+    body: string
+    isPinned: boolean
+  }) => Promise<void>
+  updateAnnouncement: (
+    id: string,
+    params: { title: string; body: string; isPinned: boolean },
+  ) => Promise<void>
+  deleteAnnouncement: (id: string) => Promise<void>
+
+  activities: Activity[]
+  activitiesLoading: boolean
+
+  /** ホーム表示用: 主要データの初回取得が終わったか */
   homeDataReady: boolean
 }
 
@@ -105,7 +130,6 @@ const AppContext = createContext<AppContextValue | null>(null)
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
-  const [adminLoading, setAdminLoading] = useState(true)
   const [isManagedAdmin, setIsManagedAdmin] = useState(false)
   const [myPlayer, setMyPlayer] = useState<Player | null>(null)
   const [playerLoading, setPlayerLoading] = useState(false)
@@ -122,6 +146,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [resultsLoading, setResultsLoading] = useState(true)
   const [resultsError, setResultsError] = useState<string | null>(null)
 
+  const [announcements, setAnnouncements] = useState<Announcement[]>([])
+  const [announcementsLoading, setAnnouncementsLoading] = useState(true)
+  const [announcementsError, setAnnouncementsError] = useState<string | null>(null)
+
+  const [activities, setActivities] = useState<Activity[]>([])
+  const [activitiesLoading, setActivitiesLoading] = useState(true)
+
   // --- Auth（スプラッシュ中から開始） ---
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
@@ -134,28 +165,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) {
       setIsManagedAdmin(false)
-      setAdminLoading(false)
       return
     }
 
     if (isBootstrapAdminUid(user.uid)) {
       setIsManagedAdmin(false)
-      setAdminLoading(false)
       return
     }
 
-    setAdminLoading(true)
     const adminRef = doc(db, paths.admins, user.uid)
     const unsubscribe = onSnapshot(
       adminRef,
       (snapshot) => {
         setIsManagedAdmin(snapshot.exists())
-        setAdminLoading(false)
       },
       (err) => {
         console.error(err)
         setIsManagedAdmin(false)
-        setAdminLoading(false)
       },
     )
     return unsubscribe
@@ -174,15 +200,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       playerRef,
       (snapshot) => {
         if (!snapshot.exists()) {
-          setMyPlayer(null)
+          // 登録直後の楽観更新を、伝播遅延で誤って消さない
+          setMyPlayer((prev) =>
+            prev?.id === user.uid ? prev : null,
+          )
         } else {
           setMyPlayer({ id: snapshot.id, ...snapshot.data() } as Player)
         }
         setPlayerLoading(false)
       },
       (err) => {
-        console.error(err)
-        setMyPlayer(null)
+        console.error('player snapshot error:', err)
         setPlayerLoading(false)
       },
     )
@@ -243,6 +271,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return unsubscribe
   }, [])
 
+  useEffect(() => {
+    const q = query(collection(db, paths.announcements), orderBy('createdAt', 'desc'))
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const items = snapshot.docs.map(
+          (d) => ({ id: d.id, ...d.data() }) as Announcement,
+        )
+        items.sort((a, b) => {
+          if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1
+          const aMs = a.createdAt?.toMillis?.() ?? 0
+          const bMs = b.createdAt?.toMillis?.() ?? 0
+          return bMs - aMs
+        })
+        setAnnouncements(items)
+        setAnnouncementsError(null)
+        setAnnouncementsLoading(false)
+      },
+      (err) => {
+        console.error(err)
+        setAnnouncementsError('お知らせの取得に失敗しました')
+        setAnnouncementsLoading(false)
+      },
+    )
+    return unsubscribe
+  }, [])
+
+  useEffect(() => {
+    const q = query(
+      collection(db, paths.activities),
+      orderBy('createdAt', 'desc'),
+      limit(30),
+    )
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        setActivities(
+          snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Activity),
+        )
+        setActivitiesLoading(false)
+      },
+      (err) => {
+        console.error(err)
+        setActivitiesLoading(false)
+      },
+    )
+    return unsubscribe
+  }, [])
+
   const login = useCallback(async () => {
     await signInWithPopup(auth, googleProvider)
   }, [])
@@ -256,15 +333,59 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const name = sanitizeUserText(params.name).trim()
       const icon = sanitizeUserText(params.icon).trim() || name.slice(0, 2)
       const memo = sanitizeUserText(params.memo).trim()
-      await setDoc(doc(db, paths.players, uid), {
+      if (icon.length > 4) {
+        throw new Error('アイコンは4文字以内で選んでください')
+      }
+      const playerRef = doc(db, paths.players, uid)
+      const now = Timestamp.now()
+      const existing = await getDoc(playerRef)
+
+      if (existing.exists()) {
+        // 再登録・途中失敗後の再試行は update（setDoc だと createdAt 変更で Rules 拒否）
+        await updateDoc(playerRef, {
+          name,
+          icon,
+          memo,
+          updatedAt: serverTimestamp(),
+        })
+      } else {
+        await setDoc(playerRef, {
+          authUid: uid,
+          name,
+          icon,
+          memo,
+          isActive: true,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        })
+      }
+
+      // onSnapshot より先に UI を更新（登録直後の AuthRedirect 競合を防ぐ）
+      setMyPlayer({
+        id: uid,
         authUid: uid,
         name,
         icon,
         memo,
         isActive: true,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        createdAt: (existing.data()?.createdAt as Timestamp | undefined) ?? now,
+        updatedAt: now,
       })
+      setPlayerLoading(false)
+
+      if (!existing.exists()) {
+        // アクティビティは失敗しても登録自体は成功させる（Rules 未デプロイ時など）
+        try {
+          await addDoc(collection(db, paths.activities), {
+            type: 'member_joined',
+            playerId: uid,
+            playerName: name,
+            createdAt: serverTimestamp(),
+          })
+        } catch (activityErr) {
+          console.error('member_joined activity write failed:', activityErr)
+        }
+      }
     },
     [],
   )
@@ -300,12 +421,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addGame = useCallback(
     async (params: { date: string; appName: string; memo: string }) => {
-      const snapshot = await getDocs(collection(db, paths.games))
-      const gameNo = snapshot.size + 1
+      const gameNo = await allocateGameNo(db, paths.games, paths.gameCounter)
       const { appName, memo } = sanitizeGameText(params)
+      const time = getDefaultGameTime()
       const docRef = await addDoc(collection(db, paths.games), {
         gameNo,
         date: params.date,
+        time,
         appName,
         memo,
         createdAt: serverTimestamp(),
@@ -323,16 +445,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       memo: string
       entries: { playerId: string; rank: number; point: number }[]
     }) => {
+      const gameNo = await allocateGameNo(db, paths.games, paths.gameCounter)
       const gamesRef = collection(db, paths.games)
       const resultsRef = collection(db, paths.results)
-      const snapshot = await getDocs(gamesRef)
-      const gameNo = snapshot.size + 1
       const gameRef = doc(gamesRef)
       const batch = writeBatch(db)
       const { appName, memo } = sanitizeGameText(params)
+      const time = getDefaultGameTime()
       batch.set(gameRef, {
         gameNo,
         date: params.date,
+        time,
         appName,
         memo,
         createdAt: serverTimestamp(),
@@ -346,6 +469,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
           createdAt: serverTimestamp(),
         })
       }
+      const actorUid = auth.currentUser?.uid
+      if (!actorUid) throw new Error('ログインが必要です')
+      const activityRef = doc(collection(db, paths.activities))
+      batch.set(activityRef, {
+        type: 'game_added',
+        gameId: gameRef.id,
+        gameNo,
+        gameDate: params.date,
+        gameTime: time,
+        actorUid,
+        createdAt: serverTimestamp(),
+      })
       await batch.commit()
       return { id: gameRef.id, gameNo }
     },
@@ -420,12 +555,77 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  const sanitizeAnnouncement = (params: {
+    title: string
+    body: string
+  }) => ({
+    title: sanitizeUserText(params.title).trim(),
+    body: sanitizeUserText(params.body).trim(),
+  })
+
+  const createAnnouncement = useCallback(
+    async (params: { title: string; body: string; isPinned: boolean }) => {
+      const uid = auth.currentUser?.uid
+      if (!uid) throw new Error('ログインが必要です')
+      const { title, body } = sanitizeAnnouncement(params)
+      if (!title) throw new Error('タイトルを入力してください')
+      if (title.length > ANNOUNCEMENT_LIMITS.title) {
+        throw new Error(`タイトルは${ANNOUNCEMENT_LIMITS.title}文字以内です`)
+      }
+      if (body.length > ANNOUNCEMENT_LIMITS.body) {
+        throw new Error(`本文は${ANNOUNCEMENT_LIMITS.body}文字以内です`)
+      }
+      await addDoc(collection(db, paths.announcements), {
+        title,
+        body,
+        isPinned: params.isPinned,
+        authorUid: uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      })
+    },
+    [],
+  )
+
+  const updateAnnouncement = useCallback(
+    async (
+      id: string,
+      params: { title: string; body: string; isPinned: boolean },
+    ) => {
+      const { title, body } = sanitizeAnnouncement(params)
+      if (!title) throw new Error('タイトルを入力してください')
+      if (title.length > ANNOUNCEMENT_LIMITS.title) {
+        throw new Error(`タイトルは${ANNOUNCEMENT_LIMITS.title}文字以内です`)
+      }
+      if (body.length > ANNOUNCEMENT_LIMITS.body) {
+        throw new Error(`本文は${ANNOUNCEMENT_LIMITS.body}文字以内です`)
+      }
+      await updateDoc(doc(db, paths.announcements, id), {
+        title,
+        body,
+        isPinned: params.isPinned,
+        updatedAt: serverTimestamp(),
+      })
+    },
+    [],
+  )
+
+  const deleteAnnouncement = useCallback(async (id: string) => {
+    await deleteDoc(doc(db, paths.announcements, id))
+  }, [])
+
   const isBootstrapAdmin = isBootstrapAdminUid(user?.uid)
   const isAdmin = isBootstrapAdmin || isManagedAdmin
   const hasPlayerProfile = !!myPlayer
+  // 管理者 doc の確認は画面全体をブロックしない（登録画面が Loading で固まるのを防ぐ）
   const authLoadingCombined =
-    authLoading || (user ? adminLoading || playerLoading : false)
-  const homeDataReady = !playersLoading && !gamesLoading && !resultsLoading
+    authLoading || (user ? playerLoading && !myPlayer : false)
+  const homeDataReady =
+    !playersLoading &&
+    !gamesLoading &&
+    !resultsLoading &&
+    !announcementsLoading &&
+    !activitiesLoading
 
   const isPlayerParticipationSuspended =
     !!user && !!myPlayer && !myPlayer.isActive && !isAdmin
@@ -460,6 +660,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       resultsLoading,
       resultsError,
       addResults,
+      announcements,
+      announcementsLoading,
+      announcementsError,
+      createAnnouncement,
+      updateAnnouncement,
+      deleteAnnouncement,
+      activities,
+      activitiesLoading,
       homeDataReady,
     }),
     [
@@ -490,6 +698,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       resultsLoading,
       resultsError,
       addResults,
+      announcements,
+      announcementsLoading,
+      announcementsError,
+      createAnnouncement,
+      updateAnnouncement,
+      deleteAnnouncement,
+      activities,
+      activitiesLoading,
       homeDataReady,
     ],
   )

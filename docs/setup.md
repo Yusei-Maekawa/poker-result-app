@@ -50,6 +50,7 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
 VITE_FIREBASE_APP_ID=1:123456789:web:abc...
 VITE_FIREBASE_MEASUREMENT_ID=G-XXXXXXXXXX
 VITE_ADMIN_UIDS=your_firebase_uid
+VITE_LEAGUE_ID=main
 ```
 
 `VITE_ADMIN_UIDS` は初期管理者（ブートストラップ管理者）です。
@@ -62,6 +63,37 @@ VITE_ADMIN_UIDS=your_firebase_uid
 ```env
 VITE_ADMIN_UIDS=uid1,uid2,uid3
 ```
+
+#### リーグ ID（`VITE_LEAGUE_ID`）— テストと本番のデータ分離
+
+Firestore のデータは `leagues/{leagueId}/...` 以下に保存される。`VITE_LEAGUE_ID` で **どのリーグを見る・書くか** を切り替える。
+
+| 値 | 用途 |
+|----|------|
+| `main` | **本番**（友達リーグの本番データ。デフォルト） |
+| `dev` など | **テスト**（試合の追加・削除を繰り返す検証用） |
+
+**なぜ分けるか**
+
+- 第〇戦の番号（`gameNo`）は **削除しても詰め直さない**（カウンター `counters/games` の `nextGameNo` が進むだけ）
+- テストで何十試合も追加・削除すると、本番と同じ `main` を使っていると **次の本番試合が「第101戦」のように飛ぶ**
+- `dev` に切り替えてテストすれば、`main` のカウンターとデータは汚れない
+
+**運用例**
+
+```env
+# 本番・通常開発
+VITE_LEAGUE_ID=main
+
+# ローカルで試合入力の動作確認だけしたいとき
+VITE_LEAGUE_ID=dev
+```
+
+変更後は **Vite を再起動**（`npm run dev` のやり直し）が必要。ビルド・デプロイ時も、その環境の `VITE_LEAGUE_ID` がバンドルに埋め込まれる。
+
+Firebase Console では `leagues/dev/...` と `leagues/main/...` が別ツリーとして見える。テストデータの削除は `dev` 配下だけ消せばよい。
+
+実装: `src/firebase.ts` の `LEAGUE_ID`（未設定時は `main`）。
 
 ### 5. Firestore Security Rules を設定
 
@@ -146,7 +178,10 @@ VITE_FIREBASE_MESSAGING_SENDER_ID
 VITE_FIREBASE_APP_ID
 VITE_FIREBASE_MEASUREMENT_ID
 VITE_ADMIN_UIDS
+VITE_LEAGUE_ID
 ```
+
+本番デプロイでは `VITE_LEAGUE_ID=main` を設定すること。プレビュー環境だけ `dev` にする運用も可。
 
 ### Firebase Authentication の承認済みドメイン設定
 
@@ -176,7 +211,7 @@ Vercel でデプロイ後：
 
 ```
 leagues/
-  main/
+  {leagueId}/          # VITE_LEAGUE_ID（例: main / dev）
     players/{playerId}
       - name: string
       - icon: string

@@ -325,9 +325,10 @@ export function PlayersPage() {
             const isMe = myPlayer?.id === player.id
 
             return (
-              <div
+              <Link
                 key={player.id}
-                className={`card px-4 py-3 flex items-center gap-3 ${
+                to={`/players/${player.id}`}
+                className={`card px-4 py-3 flex items-center gap-3 hover:border-white/15 transition-colors ${
                   isMe ? 'border-gold-500/30' : ''
                 }`}
               >
@@ -351,7 +352,7 @@ export function PlayersPage() {
                   </p>
                   <p className="text-white/50 text-xs">{count}試合</p>
                 </div>
-              </div>
+              </Link>
             )
           })}
         </div>

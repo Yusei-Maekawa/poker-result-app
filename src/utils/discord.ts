@@ -1,4 +1,5 @@
 import type { Game, ResultWithPlayer } from '../types'
+import { formatGameDateTime } from './formatDateTime'
 
 const RANK_EMOJI: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
 
@@ -13,7 +14,7 @@ export function buildDiscordMessage(
 
   const lines: string[] = [
     `🃏 **ポーカーリーグ 第${game.gameNo}戦 結果** 🃏`,
-    `📅 ${formatDate(game.date)}  ·  🎮 ${game.appName}  ·  👥 ${sorted.length}人`,
+    `📅 ${formatGameDateTime(game.date, game.time)}  ·  🎮 ${game.appName}  ·  👥 ${sorted.length}人`,
     '',
     '```',
     ...sorted.map((r) => {
@@ -29,9 +30,4 @@ export function buildDiscordMessage(
   }
 
   return lines.join('\n')
-}
-
-function formatDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-')
-  return `${y}年${Number(m)}月${Number(d)}日`
 }

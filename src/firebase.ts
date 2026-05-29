@@ -18,7 +18,12 @@ export const googleProvider = new GoogleAuthProvider()
 googleProvider.setCustomParameters({ prompt: 'select_account' })
 
 // Firestore パス定数
-export const LEAGUE_ID = 'main'
+/**
+ * Firestore のリーグID。
+ * - 本番: main
+ * - テスト: dev など別ID（番号やデータを汚さない）
+ */
+export const LEAGUE_ID: string = import.meta.env.VITE_LEAGUE_ID ?? 'main'
 export const SEASON_ID = 'season1'
 
 export const paths = {
@@ -26,4 +31,7 @@ export const paths = {
   players: `leagues/${LEAGUE_ID}/players`,
   games: `leagues/${LEAGUE_ID}/games`,
   results: `leagues/${LEAGUE_ID}/results`,
+  announcements: `leagues/${LEAGUE_ID}/announcements`,
+  activities: `leagues/${LEAGUE_ID}/activities`,
+  gameCounter: `leagues/${LEAGUE_ID}/counters/games`,
 }

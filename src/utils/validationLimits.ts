@@ -11,3 +11,8 @@ export const PLAYER_LIMITS = {
   icon: 4,
   memo: 80,
 } as const
+
+export const ANNOUNCEMENT_LIMITS = {
+  title: 60,
+  body: 2000,
+} as const

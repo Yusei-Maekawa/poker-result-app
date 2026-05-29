@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { Game, Result, Player } from '../types'
+import { formatGameDateTime } from '../utils/formatDateTime'
 
 interface GameCardProps {
   game: Game
@@ -19,7 +20,7 @@ export function GameCard({ game, results, players, compact = false }: GameCardPr
   const winnerName = winnerPlayer && winnerPlayer.isActive ? winnerPlayer.name : '—'
   const top3 = sorted.slice(0, 3)
 
-  const formattedDate = formatDate(game.date)
+  const formattedDate = formatGameDateTime(game.date, game.time)
 
   if (compact) {
     return (
@@ -88,9 +89,4 @@ export function GameCard({ game, results, players, compact = false }: GameCardPr
       </Link>
     </div>
   )
-}
-
-function formatDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-')
-  return `${y}年${Number(m)}月${Number(d)}日`
 }

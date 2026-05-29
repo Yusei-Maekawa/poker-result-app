@@ -19,7 +19,7 @@
 
 ## 再開するとき（本番に戻す）
 
-1. ルートに **`.env`** があること（Firebase の `VITE_*` と `VITE_ADMIN_UIDS`）
+1. ルートに **`.env`** があること（Firebase の `VITE_*` と `VITE_ADMIN_UIDS`、`VITE_LEAGUE_ID`）
 2. 次を実行:
 
 ```bash
@@ -73,7 +73,7 @@ npm run preview
 
 | ファイル | 役割 |
 |----------|------|
-| `.env` | 通常ビルド用（Firebase 設定・管理者 UID） |
+| `.env` | 通常ビルド用（Firebase 設定・管理者 UID・`VITE_LEAGUE_ID`） |
 | `.env.maintenance` | `VITE_MAINTENANCE_MODE=true` のみ |
 | `src/main.tsx` | メンテ ON のとき `MaintenancePage` だけ表示、OFF のとき通常の `App` |
 | `src/pages/MaintenancePage.tsx` | メンテ用の1画面 |
