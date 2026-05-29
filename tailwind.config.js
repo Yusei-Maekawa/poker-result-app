@@ -34,6 +34,12 @@ export default {
         'fade-in': 'fadeIn 0.4s ease-out',
         'slide-up': 'slideUp 0.4s ease-out',
         'shimmer': 'shimmer 2s infinite',
+        'splash-pop': 'splashPop 0.55s cubic-bezier(0.34, 1.4, 0.64, 1) forwards',
+        'splash-rise': 'splashRise 0.6s ease-out 0.1s both',
+        'splash-letter': 'splashLetter 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards',
+        'splash-underline': 'splashUnderline 0.45s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+        'splash-tagline': 'splashTagline 0.5s ease-out forwards',
+        'splash-cursor': 'splashCursor 0.55s ease-out forwards',
       },
       keyframes: {
         fadeIn: { from: { opacity: '0' }, to: { opacity: '1' } },
@@ -41,6 +47,39 @@ export default {
         shimmer: {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.5' },
+        },
+        splashPop: {
+          '0%': { opacity: '0', transform: 'scale(0.6)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        splashRise: {
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        splashLetter: {
+          '0%': {
+            opacity: '0',
+            clipPath: 'inset(0 100% 0 0)',
+            transform: 'translateY(0.12em)',
+          },
+          '100%': {
+            opacity: '1',
+            clipPath: 'inset(0 0 0 0)',
+            transform: 'translateY(0)',
+          },
+        },
+        splashUnderline: {
+          '0%': { transform: 'scaleX(0)', opacity: '0' },
+          '100%': { transform: 'scaleX(1)', opacity: '1' },
+        },
+        splashTagline: {
+          '0%': { opacity: '0', transform: 'translateY(6px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        splashCursor: {
+          '0%': { opacity: '0', transform: 'scaleY(0)' },
+          '40%': { opacity: '1', transform: 'scaleY(1)' },
+          '100%': { opacity: '0', transform: 'scaleY(1)' },
         },
       },
     },

@@ -5,6 +5,13 @@
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
+    font-size: 16px;
+  }
+  /* スマホはそのまま、PC（lg+）だけ少し拡大 */
+  @media (min-width: 1024px) {
+    html {
+      font-size: 18px;
+    }
   }
   body {
     background-color: #0a1a0f;
@@ -15,6 +22,11 @@
 }
 
 @layer components {
+  .app-container {
+    @apply w-full max-w-2xl mx-auto px-4;
+    @apply lg:max-w-3xl lg:px-8;
+    @apply xl:max-w-4xl;
+  }
   .card {
     @apply bg-felt-800/80 border border-white/[0.08] rounded-xl backdrop-blur-sm;
   }
@@ -44,5 +56,88 @@
   }
   .rank-badge {
     @apply w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold font-mono;
+  }
+}
+
+/* スプラッシュ: Tailwind の opacity ユーティリティと競合しないよう CSS で定義 */
+@keyframes splash-letter-in {
+  0% {
+    opacity: 0;
+    transform: translateY(0.2em);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes splash-underline-in {
+  from {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+@keyframes splash-tagline-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes splash-cursor-blink {
+  0% {
+    opacity: 0;
+    transform: scaleY(0.2);
+  }
+  35% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleY(1);
+  }
+}
+
+@layer utilities {
+  .splash-screen .splash-letter {
+    display: inline-block;
+    opacity: 0;
+    animation-name: splash-letter-in;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    animation-fill-mode: both;
+  }
+
+  .splash-screen .splash-underline {
+    transform-origin: left center;
+    opacity: 0;
+    animation-name: splash-underline-in;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    animation-fill-mode: both;
+  }
+
+  .splash-screen .splash-tagline {
+    opacity: 0;
+    animation-name: splash-tagline-in;
+    animation-timing-function: ease-out;
+    animation-fill-mode: both;
+  }
+
+  .splash-screen .splash-cursor {
+    opacity: 0;
+    animation-name: splash-cursor-blink;
+    animation-timing-function: ease-out;
+    animation-fill-mode: both;
   }
 }

@@ -16,7 +16,8 @@ export function AuthRedirect({ children }: { children: React.ReactNode }) {
   const { user, hasPlayerProfile, isAdmin, loading } = useAuth()
   const { pathname } = useLocation()
 
-  if (loading) {
+  // 起動後はホームを先に見せる（認証確認中も公開ページは表示）
+  if (loading && !isPublicPath(pathname)) {
     return (
       <div className="min-h-dvh bg-felt-texture flex items-center justify-center">
         <Loading />

@@ -17,7 +17,7 @@ export function BannedParticipationBanner() {
       role="status"
       className="bg-amber-950/50 border-b border-amber-600/35 px-4 py-3"
     >
-      <div className="max-w-2xl mx-auto">
+      <div className="app-container">
         <p className="text-amber-200/95 text-sm font-semibold">
           参加資格が停止されています
         </p>

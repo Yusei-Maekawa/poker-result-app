@@ -1,5 +1,9 @@
+import { useRef } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { AppProvider } from './context/AppProvider'
 import { AuthRedirect } from './components/AuthRedirect'
+import { SplashScreen } from './components/SplashScreen'
+import { useSplash } from './hooks/useSplash'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
@@ -12,6 +16,28 @@ import { NewGamePage } from './pages/NewGamePage'
 import { EditGamePage } from './pages/EditGamePage'
 
 export default function App() {
+  return (
+    <AppProvider>
+      <AppShell />
+    </AppProvider>
+  )
+}
+
+function AppShell() {
+  const splashPhase = useSplash()
+  const didSetLaunchHome = useRef(false)
+
+  if (splashPhase !== 'done') {
+    return <SplashScreen phase={splashPhase === 'out' ? 'out' : 'in'} />
+  }
+
+  if (!didSetLaunchHome.current) {
+    didSetLaunchHome.current = true
+    if (window.location.pathname !== '/') {
+      window.history.replaceState(null, '', '/')
+    }
+  }
+
   return (
     <BrowserRouter>
       <AuthRedirect>
