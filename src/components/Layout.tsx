@@ -3,6 +3,7 @@ import { APP_NAME } from '../constants/app'
 import { APP_VERSION_LABEL } from '../constants/version'
 import { Header } from './Header'
 import { BannedParticipationBanner } from './BannedParticipationBanner'
+import { DevEnvironmentBanner } from './DevEnvironmentBanner'
 
 interface LayoutProps {
   children: ReactNode
@@ -11,6 +12,7 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-dvh bg-felt-texture">
+      <DevEnvironmentBanner />
       <BannedParticipationBanner />
       <Header />
       <main className="app-container py-6 lg:py-8 pb-[max(1.5rem,env(safe-area-inset-bottom))] animate-fade-in">
